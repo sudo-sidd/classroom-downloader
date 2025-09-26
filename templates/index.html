@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Classroom Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <h1><i class="fas fa-graduation-cap"></i> Classroom Downloader</h1>
+                <div class="header-controls">
+                    <div id="auth-status" class="auth-status">
+                        <span id="auth-text">Not Authenticated</span>
+                        <button id="auth-btn" class="btn btn-primary">Authenticate</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Setup Section -->
+                <section id="setup-section" class="section">
+                    <div class="card">
+                        <h2><i class="fas fa-cog"></i> Setup</h2>
+                        <div class="setup-grid">
+                            <div class="setup-item">
+                                <label for="base-directory">Download Directory:</label>
+                                <div class="input-group">
+                                    <input type="text" id="base-directory" placeholder="/path/to/downloads" />
+                                    <button id="update-settings-btn" class="btn btn-secondary">Update</button>
+                                </div>
+                            </div>
+                            <div class="setup-item">
+                                <label for="concurrent-downloads">Max Concurrent Downloads:</label>
+                                <input type="number" id="concurrent-downloads" min="1" max="10" value="5" />
+                            </div>
+                        </div>
+                        <div id="setup-status" class="status-message"></div>
+                    </div>
+                </section>
+
+                <!-- Course Selection -->
+                <section id="courses-section" class="section" style="display: none;">
+                    <div class="card">
+                        <h2><i class="fas fa-book"></i> Select Courses</h2>
+                        <div class="course-controls">
+                            <button id="refresh-courses-btn" class="btn btn-secondary">
+                                <i class="fas fa-sync-alt"></i> Refresh Courses
+                            </button>
+                            <button id="select-all-courses" class="btn btn-secondary">Select All</button>
+                            <button id="deselect-all-courses" class="btn btn-secondary">Deselect All</button>
+                        </div>
+                        <div id="courses-list" class="courses-list">
+                            <!-- Courses will be loaded here -->
+                        </div>
+                        <div id="courses-status" class="status-message"></div>
+                    </div>
+                </section>
+
+                <!-- Date Range Selection -->
+                <section id="date-section" class="section" style="display: none;">
+                    <div class="card">
+                        <h2><i class="fas fa-calendar-alt"></i> Date Range (Optional)</h2>
+                        <div class="date-controls">
+                            <div class="date-input">
+                                <label for="start-date">Start Date:</label>
+                                <input type="date" id="start-date" />
+                            </div>
+                            <div class="date-input">
+                                <label for="end-date">End Date:</label>
+                                <input type="date" id="end-date" />
+                            </div>
+                            <button id="clear-dates" class="btn btn-secondary">Clear Dates</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Download Section -->
+                <section id="download-section" class="section" style="display: none;">
+                    <div class="card">
+                        <h2><i class="fas fa-download"></i> Download Materials</h2>
+                        <div class="download-controls">
+                            <button id="start-download-btn" class="btn btn-primary btn-large">
+                                <i class="fas fa-play"></i> Start Download
+                            </button>
+                        </div>
+                        
+                        <!-- Progress Display -->
+                        <div id="progress-container" class="progress-container" style="display: none;">
+                            <div class="progress-info">
+                                <div class="progress-text">
+                                    <span id="progress-message">Preparing download...</span>
+                                </div>
+                                <div class="progress-stats">
+                                    <span id="progress-files">0 / 0 files</span>
+                                    <span id="progress-percentage">0%</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill"></div>
+                            </div>
+                            <div class="current-file">
+                                <i class="fas fa-file"></i>
+                                <span id="current-file-name">-</span>
+                            </div>
+                            <div class="download-errors" id="download-errors" style="display: none;">
+                                <h4>Recent Errors:</h4>
+                                <ul id="error-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Statistics Section -->
+                <section id="stats-section" class="section">
+                    <div class="card">
+                        <h2><i class="fas fa-chart-bar"></i> Statistics</h2>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="total-files">-</div>
+                                <div class="stat-label">Total Files</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="total-size">-</div>
+                                <div class="stat-label">Total Size</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="course-count">-</div>
+                                <div class="stat-label">Courses</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="uncategorized-files">-</div>
+                                <div class="stat-label">Uncategorized</div>
+                            </div>
+                        </div>
+                        <button id="refresh-stats-btn" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> Refresh Stats
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Materials Browser -->
+                <section id="materials-section" class="section">
+                    <div class="card">
+                        <h2><i class="fas fa-folder-open"></i> Browse Materials</h2>
+                        <div class="materials-controls">
+                            <input type="text" id="search-materials" placeholder="Search materials..." />
+                            <select id="filter-course">
+                                <option value="">All Courses</option>
+                            </select>
+                            <select id="filter-type">
+                                <option value="">All Types</option>
+                                <option value="pdf">PDFs</option>
+                                <option value="doc">Documents</option>
+                                <option value="image">Images</option>
+                                <option value="video">Videos</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <button id="search-btn" class="btn btn-secondary">Search</button>
+                        </div>
+                        <div id="materials-list" class="materials-list">
+                            <!-- Materials will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Uncategorized Materials -->
+                <section id="uncategorized-section" class="section">
+                    <div class="card">
+                        <h2><i class="fas fa-question-circle"></i> Uncategorized Materials</h2>
+                        <p class="help-text">These materials don't have a course assignment. Drag and drop them to assign to a course.</p>
+                        <div id="uncategorized-list" class="materials-list">
+                            <!-- Uncategorized materials will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p id="loading-message">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
