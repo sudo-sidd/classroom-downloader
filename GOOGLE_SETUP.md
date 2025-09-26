@@ -40,9 +40,10 @@ Make sure these APIs are enabled in your project:
    - `https://www.googleapis.com/auth/drive.readonly`
    - `https://www.googleapis.com/auth/drive.file`
 
-### 5. Download Credentials
+### 5. Download Credentials (Do NOT commit)
 1. From the "Credentials" page, download your OAuth 2.0 Client credentials
 2. Save the file as `credentials.json` in the `/projects/classroom-downloader/` directory
+3. Important: `credentials.json` is git-ignored. Never commit this file. Use `credentials.example.json` as a template for docs.
 
 ## After Setup:
 1. Restart the Flask application

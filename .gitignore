@@ -1,3 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.env
+.venv/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+credentials.json
+token.json
+downloads/
+*.db
+*.sqlite
+
+# Logs
+*.log
+
+# Node (if any)
+node_modules/
+
 # Python-generated files
 __pycache__/
 *.py[oc]
