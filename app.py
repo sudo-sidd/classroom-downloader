@@ -17,6 +17,7 @@ from backend.file_manager import FileSystemManager
 from backend.classroom_api import ClassroomAPIClient
 from backend.downloader import FileDownloader
 from backend.index_generator import IndexGenerator
+from backend.subject_classifier import SubjectClassifier
 
 
 # Configure logging
@@ -43,6 +44,7 @@ file_manager: Optional[FileSystemManager] = None
 classroom_client: Optional[ClassroomAPIClient] = None
 downloader: Optional[FileDownloader] = None
 index_generator: Optional[IndexGenerator] = None
+subject_classifier: Optional[SubjectClassifier] = None
 
 # Global state for downloads
 current_download_status: Dict[str, Any] = {}
@@ -51,7 +53,7 @@ download_lock = threading.Lock()
 
 def initialize_managers():
     """Initialize all manager instances."""
-    global auth_manager, db_manager, file_manager, classroom_client, downloader, index_generator
+    global auth_manager, db_manager, file_manager, classroom_client, downloader, index_generator, subject_classifier
     
     try:
         # Setup credentials template if needed
@@ -68,6 +70,7 @@ def initialize_managers():
         classroom_client = ClassroomAPIClient(auth_manager)
         downloader = FileDownloader(auth_manager, file_manager, db_manager)
         index_generator = IndexGenerator(file_manager, db_manager)
+        subject_classifier = SubjectClassifier(db_manager)
         
         logger.info("All managers initialized successfully")
         return True
@@ -609,6 +612,286 @@ def api_serve_file(filepath):
         
     except Exception as e:
         logger.error(f"Error serving file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Subject Management API Endpoints
+
+@app.route('/api/subjects', methods=['GET'])
+def api_get_subjects():
+    """Get all subjects."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        subjects = db_manager.get_all_subjects()
+        return jsonify({'subjects': subjects})
+        
+    except Exception as e:
+        logger.error(f"Error getting subjects: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/subjects', methods=['POST'])
+def api_create_subject():
+    """Create a new subject."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        name = data.get('name', '').strip()
+        keywords = data.get('keywords', '').strip()
+        priority = int(data.get('priority', 5))
+        color = data.get('color', '#3498db').strip()
+        
+        if not name:
+            return jsonify({'error': 'Subject name is required'}), 400
+        if not keywords:
+            return jsonify({'error': 'Keywords are required'}), 400
+            
+        success = db_manager.add_subject(name, keywords, priority, color)
+        if success:
+            return jsonify({'message': 'Subject created successfully'}), 201
+        else:
+            return jsonify({'error': 'Subject already exists or creation failed'}), 400
+            
+    except Exception as e:
+        logger.error(f"Error creating subject: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/subjects/<int:subject_id>', methods=['PUT'])
+def api_update_subject(subject_id):
+    """Update an existing subject."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        # Extract update fields
+        update_fields = {}
+        if 'name' in data and data['name'].strip():
+            update_fields['name'] = data['name'].strip()
+        if 'keywords' in data and data['keywords'].strip():
+            update_fields['keywords'] = data['keywords'].strip()
+        if 'priority' in data:
+            update_fields['priority'] = int(data['priority'])
+        if 'color' in data and data['color'].strip():
+            update_fields['color'] = data['color'].strip()
+            
+        if not update_fields:
+            return jsonify({'error': 'No valid update fields provided'}), 400
+            
+        success = db_manager.update_subject(subject_id, **update_fields)
+        if success:
+            return jsonify({'message': 'Subject updated successfully'})
+        else:
+            return jsonify({'error': 'Subject not found or update failed'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error updating subject: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/subjects/<int:subject_id>', methods=['DELETE'])
+def api_delete_subject(subject_id):
+    """Delete a subject."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        success = db_manager.delete_subject(subject_id)
+        if success:
+            return jsonify({'message': 'Subject deleted successfully'})
+        else:
+            return jsonify({'error': 'Subject not found'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error deleting subject: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/files/by-subject')
+def api_get_files_by_subject():
+    """Get files organized by subject."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        subject_id = request.args.get('subject_id', type=int)
+        files_by_subject = db_manager.get_files_by_subject(subject_id)
+        subjects = db_manager.get_all_subjects()
+        
+        return jsonify({
+            'files_by_subject': files_by_subject,
+            'subjects': subjects
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting files by subject: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/files/<int:material_id>/classify', methods=['POST'])
+def api_classify_file(material_id):
+    """Classify a file to a subject."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        subject_id = data.get('subject_id')
+        if subject_id is None:
+            return jsonify({'error': 'Subject ID is required'}), 400
+            
+        success = db_manager.classify_file(material_id, subject_id, 'manual')
+        if success:
+            return jsonify({'message': 'File classified successfully'})
+        else:
+            return jsonify({'error': 'Classification failed'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error classifying file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/files/<int:material_id>/unclassify', methods=['POST'])
+def api_unclassify_file(material_id):
+    """Remove classification from a file."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        success = db_manager.unclassify_file(material_id)
+        if success:
+            return jsonify({'message': 'File unclassified successfully'})
+        else:
+            return jsonify({'error': 'File not found or not classified'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error unclassifying file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/files/bulk-classify', methods=['POST'])
+def api_bulk_classify_files():
+    """Classify multiple files to a subject."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        material_ids = data.get('material_ids', [])
+        subject_id = data.get('subject_id')
+        
+        if not material_ids:
+            return jsonify({'error': 'No files provided'}), 400
+        if subject_id is None:
+            return jsonify({'error': 'Subject ID is required'}), 400
+            
+        success_count = 0
+        for material_id in material_ids:
+            if db_manager.classify_file(material_id, subject_id, 'manual'):
+                success_count += 1
+                
+        return jsonify({
+            'message': f'Classified {success_count} of {len(material_ids)} files',
+            'success_count': success_count,
+            'total_count': len(material_ids)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error bulk classifying files: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/classify/auto', methods=['POST'])
+def api_auto_classify():
+    """Auto-classify all unclassified files."""
+    try:
+        if not all([db_manager, subject_classifier]):
+            return jsonify({'error': 'Managers not initialized'}), 500
+            
+        data = request.get_json() or {}
+        confidence_threshold = float(data.get('confidence_threshold', 0.7))
+        
+        # Get unclassified files
+        files_by_subject = db_manager.get_files_by_subject()
+        unclassified_files = files_by_subject.get('unclassified', [])
+        
+        if not unclassified_files:
+            return jsonify({'message': 'No unclassified files found', 'results': []})
+            
+        # Classify files
+        results = subject_classifier.classify_multiple_files(
+            unclassified_files, 
+            auto_apply=True
+        )
+        
+        # Filter results for high confidence classifications
+        auto_applied = [r for r in results if r['applied']]
+        low_confidence = [r for r in results if r['classification'] and not r['applied']]
+        
+        return jsonify({
+            'message': f'Auto-classified {len(auto_applied)} files',
+            'auto_applied': len(auto_applied),
+            'low_confidence': len(low_confidence),
+            'total_processed': len(results),
+            'results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error auto-classifying files: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/files/<int:material_id>/suggestions')
+def api_get_classification_suggestions(material_id):
+    """Get classification suggestions for a specific file."""
+    try:
+        if not all([db_manager, subject_classifier]):
+            return jsonify({'error': 'Managers not initialized'}), 500
+            
+        # Get material
+        materials = db_manager.get_all_materials()
+        material = next((m for m in materials if m['id'] == material_id), None)
+        
+        if not material:
+            return jsonify({'error': 'Material not found'}), 404
+            
+        suggestions = subject_classifier.get_classification_suggestions(material, limit=3)
+        return jsonify({'suggestions': suggestions})
+        
+    except Exception as e:
+        logger.error(f"Error getting suggestions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/classification/stats')
+def api_get_classification_stats():
+    """Get classification statistics."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+            
+        stats = db_manager.get_classification_stats()
+        return jsonify(stats)
+        
+    except Exception as e:
+        logger.error(f"Error getting classification stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 

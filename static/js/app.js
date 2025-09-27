@@ -7,6 +7,13 @@ class ClassroomDownloader {
         this.downloadInProgress = false;
         this.progressUpdateInterval = null;
         
+        // Subject organization state
+        this.subjects = [];
+        this.filesBySubject = {};
+        this.selectedFiles = new Set();
+        this.draggedFiles = [];
+        this.isSubjectView = true;
+        
         this.init();
     }
     
@@ -15,6 +22,12 @@ class ClassroomDownloader {
         await this.checkStatus();
         await this.loadSettings();
         this.updateUI();
+        
+        // Load subject organization data
+        if (this.isAuthenticated) {
+            await this.loadSubjects();
+            await this.loadFilesBySubject();
+        }
     }
     
     bindEvents() {
@@ -25,28 +38,64 @@ class ClassroomDownloader {
         document.getElementById('update-settings-btn').addEventListener('click', () => this.updateSettings());
         
         // Courses
-        document.getElementById('refresh-courses-btn').addEventListener('click', () => this.loadCourses());
-        document.getElementById('select-all-courses').addEventListener('click', () => this.selectAllCourses());
-        document.getElementById('deselect-all-courses').addEventListener('click', () => this.deselectAllCourses());
+        document.getElementById('refresh-courses-btn')?.addEventListener('click', () => this.loadCourses());
+        document.getElementById('select-all-courses')?.addEventListener('click', () => this.selectAllCourses());
+        document.getElementById('deselect-all-courses')?.addEventListener('click', () => this.deselectAllCourses());
         
         // Date controls
-        document.getElementById('clear-dates').addEventListener('click', () => this.clearDates());
+        document.getElementById('clear-dates')?.addEventListener('click', () => this.clearDates());
         
         // Download
-        document.getElementById('start-download-btn').addEventListener('click', () => this.startDownload());
+        document.getElementById('start-download-btn')?.addEventListener('click', () => this.startDownload());
+        
+        // Subject Organization Events
+        this.bindSubjectEvents();
         
         // Statistics
-        document.getElementById('refresh-stats-btn').addEventListener('click', () => this.loadStatistics());
+        document.getElementById('refresh-stats-btn')?.addEventListener('click', () => this.loadStatistics());
         
         // Materials browser
-        document.getElementById('search-btn').addEventListener('click', () => this.searchMaterials());
-        document.getElementById('search-materials').addEventListener('keypress', (e) => {
+        document.getElementById('search-btn')?.addEventListener('click', () => this.searchMaterials());
+        document.getElementById('search-materials')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.searchMaterials();
         });
         
         // Load initial data
         this.loadStatistics();
         this.loadUncategorizedMaterials();
+    }
+    
+    bindSubjectEvents() {
+        // Subject management
+        document.getElementById('add-subject-btn')?.addEventListener('click', () => this.showAddSubjectModal());
+        document.getElementById('auto-classify-btn')?.addEventListener('click', () => this.showAutoClassifyModal());
+        document.getElementById('view-toggle-btn')?.addEventListener('click', () => this.toggleView());
+        
+        // Subject form
+        document.getElementById('subject-form')?.addEventListener('submit', (e) => this.handleSubjectSubmit(e));
+        
+        // Auto-classify
+        document.getElementById('confirm-auto-classify')?.addEventListener('click', () => this.performAutoClassification());
+        document.getElementById('confidence-threshold')?.addEventListener('input', (e) => {
+            document.getElementById('confidence-value').textContent = e.target.value;
+        });
+        
+        // Modal controls
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modalId = e.target.getAttribute('data-target') || 
+                               e.target.closest('[data-target]')?.getAttribute('data-target') ||
+                               e.target.closest('.modal').id;
+                if (modalId) this.hideModal(modalId);
+            });
+        });
+        
+        // Click outside modal to close
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                this.hideModal(e.target.id);
+            }
+        });
     }
     
     async checkStatus() {
@@ -726,18 +775,28 @@ class ClassroomDownloader {
         // Show/hide sections based on auth status
         const sections = ['courses-section', 'date-section', 'download-section'];
         sections.forEach(sectionId => {
-            document.getElementById(sectionId).style.display = 
-                this.isAuthenticated ? 'block' : 'none';
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.style.display = this.isAuthenticated ? 'block' : 'none';
+            }
         });
+        
+        // Show subject organization section when authenticated
+        const subjectSection = document.getElementById('subject-organization-section');
+        if (subjectSection) {
+            subjectSection.style.display = this.isAuthenticated ? 'block' : 'none';
+        }
         
         // Update download button
         const downloadBtn = document.getElementById('start-download-btn');
-        downloadBtn.disabled = this.downloadInProgress || this.selectedCourses.size === 0;
-        
-        if (this.downloadInProgress) {
-            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
-        } else {
-            downloadBtn.innerHTML = '<i class="fas fa-play"></i> Start Download';
+        if (downloadBtn) {
+            downloadBtn.disabled = this.downloadInProgress || this.selectedCourses.size === 0;
+            
+            if (this.downloadInProgress) {
+                downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+            } else {
+                downloadBtn.innerHTML = '<i class="fas fa-play"></i> Start Download';
+            }
         }
     }
     
@@ -772,6 +831,464 @@ class ClassroomDownloader {
             container.textContent = '';
             container.className = 'status-message';
         }, 5000);
+    }
+    
+    // Subject Organization Methods
+    
+    async loadSubjects() {
+        try {
+            const response = await fetch('/api/subjects');
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.subjects = result.subjects || [];
+            } else {
+                console.error('Error loading subjects:', result.error);
+            }
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+        }
+    }
+    
+    async loadFilesBySubject() {
+        try {
+            const response = await fetch('/api/files/by-subject');
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.filesBySubject = result.files_by_subject || {};
+                this.subjects = result.subjects || this.subjects;
+                this.renderSubjectBins();
+            } else {
+                console.error('Error loading files by subject:', result.error);
+            }
+        } catch (error) {
+            console.error('Error loading files by subject:', error);
+        }
+    }
+    
+    renderSubjectBins() {
+        const container = document.getElementById('subject-bins-container');
+        if (!container) return;
+        
+        const binElements = [];
+        
+        // Unclassified bin
+        const unclassifiedFiles = this.filesBySubject.unclassified || [];
+        binElements.push(this.createSubjectBin({
+            id: 'unclassified',
+            name: 'Unclassified Files',
+            color: '#f56565',
+            files: unclassifiedFiles,
+            isUnclassified: true
+        }));
+        
+        // Subject bins
+        this.subjects.forEach(subject => {
+            const subjectKey = `subject_${subject.id}`;
+            const files = this.filesBySubject[subjectKey] || [];
+            binElements.push(this.createSubjectBin({
+                id: subject.id,
+                name: subject.name,
+                color: subject.color,
+                keywords: subject.keywords,
+                files: files,
+                isUnclassified: false
+            }));
+        });
+        
+        container.innerHTML = binElements.join('');
+        
+        // Bind drag and drop events
+        this.bindDragDropEvents();
+        
+        // Show the subject organization section
+        document.getElementById('subject-organization-section').style.display = 'block';
+    }
+    
+    createSubjectBin(subject) {
+        const fileCount = subject.files.length;
+        const binClass = subject.isUnclassified ? 'subject-bin unclassified-bin' : 'subject-bin';
+        
+        return `
+            <div class="${binClass}" 
+                 data-subject-id="${subject.id}"
+                 data-is-unclassified="${subject.isUnclassified}">
+                <div class="subject-bin-header" style="border-color: ${subject.color};">
+                    <div class="subject-bin-title" style="color: ${subject.color};">
+                        <i class="fas ${subject.isUnclassified ? 'fa-question-circle' : 'fa-folder'}"></i>
+                        ${this.escapeHtml(subject.name)}
+                        <span class="subject-bin-count">${fileCount}</span>
+                    </div>
+                    ${!subject.isUnclassified ? `
+                        <div class="subject-bin-actions">
+                            <button class="btn btn-icon btn-secondary" 
+                                    onclick="app.editSubject(${subject.id})" 
+                                    title="Edit Subject">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-icon btn-danger" 
+                                    onclick="app.deleteSubject(${subject.id})" 
+                                    title="Delete Subject">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="subject-bin-content">
+                    ${fileCount > 0 ? subject.files.map(file => this.createFileItem(file)).join('') : 
+                      '<div class="empty-bin">No files</div>'}
+                </div>
+            </div>
+        `;
+    }
+    
+    createFileItem(file) {
+        const fileIcon = this.getFileIcon(file.mime_type);
+        const date = file.date_created ? new Date(file.date_created).toLocaleDateString() : '';
+        const classificationType = file.classification_type || '';
+        
+        return `
+            <div class="file-item" 
+                 draggable="true" 
+                 data-file-id="${file.id}"
+                 data-file-title="${this.escapeHtml(file.title)}">
+                <div class="file-item-header">
+                    <input type="checkbox" class="file-item-checkbox" data-file-id="${file.id}">
+                    <div class="file-item-title">${this.escapeHtml(file.title)}</div>
+                </div>
+                <div class="file-item-meta">
+                    <div class="meta-left">
+                        <i class="fas ${fileIcon} file-type-icon"></i>
+                        <span>${date}</span>
+                    </div>
+                    ${classificationType ? `
+                        <span class="classification-badge classification-${classificationType}">
+                            ${classificationType}
+                        </span>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    getFileIcon(mimeType) {
+        const iconMap = {
+            'application/pdf': 'fa-file-pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'fa-file-word',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'fa-file-powerpoint',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'fa-file-excel',
+            'text/plain': 'fa-file-alt',
+            'image/jpeg': 'fa-file-image',
+            'image/png': 'fa-file-image',
+            'video/mp4': 'fa-file-video',
+            'audio/mpeg': 'fa-file-audio'
+        };
+        
+        return iconMap[mimeType] || 'fa-file';
+    }
+    
+    bindDragDropEvents() {
+        // File drag start
+        document.querySelectorAll('.file-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                const fileId = parseInt(e.target.getAttribute('data-file-id'));
+                const isSelected = e.target.querySelector('.file-item-checkbox').checked;
+                
+                if (isSelected) {
+                    // Drag all selected files
+                    this.draggedFiles = Array.from(document.querySelectorAll('.file-item-checkbox:checked'))
+                        .map(checkbox => parseInt(checkbox.getAttribute('data-file-id')));
+                } else {
+                    // Drag just this file
+                    this.draggedFiles = [fileId];
+                }
+                
+                e.target.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            item.addEventListener('dragend', (e) => {
+                e.target.classList.remove('dragging');
+            });
+            
+            // File selection
+            const checkbox = item.querySelector('.file-item-checkbox');
+            checkbox.addEventListener('change', (e) => {
+                const fileId = parseInt(e.target.getAttribute('data-file-id'));
+                if (e.target.checked) {
+                    this.selectedFiles.add(fileId);
+                    e.target.closest('.file-item').classList.add('selected');
+                } else {
+                    this.selectedFiles.delete(fileId);
+                    e.target.closest('.file-item').classList.remove('selected');
+                }
+                this.updateBulkOperations();
+            });
+        });
+        
+        // Subject bin drop zones
+        document.querySelectorAll('.subject-bin').forEach(bin => {
+            bin.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                bin.classList.add('drag-over');
+            });
+            
+            bin.addEventListener('dragleave', (e) => {
+                if (!bin.contains(e.relatedTarget)) {
+                    bin.classList.remove('drag-over');
+                }
+            });
+            
+            bin.addEventListener('drop', (e) => {
+                e.preventDefault();
+                bin.classList.remove('drag-over');
+                
+                const subjectId = bin.getAttribute('data-subject-id');
+                const isUnclassified = bin.getAttribute('data-is-unclassified') === 'true';
+                
+                if (isUnclassified) {
+                    this.unclassifyFiles(this.draggedFiles);
+                } else {
+                    this.classifyFiles(this.draggedFiles, parseInt(subjectId));
+                }
+            });
+        });
+    }
+    
+    async classifyFiles(fileIds, subjectId) {
+        try {
+            const response = await fetch('/api/files/bulk-classify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    material_ids: fileIds,
+                    subject_id: subjectId
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast(result.message, 'success');
+                await this.loadFilesBySubject();
+                this.clearSelection();
+            } else {
+                this.showToast(result.error || 'Classification failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error classifying files:', error);
+            this.showToast('Error classifying files', 'error');
+        }
+    }
+    
+    async unclassifyFiles(fileIds) {
+        try {
+            let successCount = 0;
+            for (const fileId of fileIds) {
+                const response = await fetch(`/api/files/${fileId}/unclassify`, {
+                    method: 'POST'
+                });
+                if (response.ok) successCount++;
+            }
+            
+            this.showToast(`Unclassified ${successCount} files`, 'success');
+            await this.loadFilesBySubject();
+            this.clearSelection();
+        } catch (error) {
+            console.error('Error unclassifying files:', error);
+            this.showToast('Error unclassifying files', 'error');
+        }
+    }
+    
+    showAddSubjectModal() {
+        document.getElementById('modal-title').textContent = 'Add New Subject';
+        document.getElementById('subject-form').reset();
+        document.getElementById('subject-form').removeAttribute('data-subject-id');
+        this.showModal('subject-modal');
+    }
+    
+    async editSubject(subjectId) {
+        const subject = this.subjects.find(s => s.id === subjectId);
+        if (!subject) return;
+        
+        document.getElementById('modal-title').textContent = 'Edit Subject';
+        document.getElementById('subject-name').value = subject.name;
+        document.getElementById('subject-keywords').value = subject.keywords;
+        document.getElementById('subject-priority').value = subject.priority;
+        document.getElementById('subject-color').value = subject.color;
+        document.getElementById('subject-form').setAttribute('data-subject-id', subjectId);
+        
+        this.showModal('subject-modal');
+    }
+    
+    async deleteSubject(subjectId) {
+        const subject = this.subjects.find(s => s.id === subjectId);
+        if (!subject) return;
+        
+        if (!confirm(`Are you sure you want to delete the subject "${subject.name}"? All file classifications for this subject will be removed.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/subjects/${subjectId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast('Subject deleted successfully', 'success');
+                await this.loadSubjects();
+                await this.loadFilesBySubject();
+            } else {
+                this.showToast(result.error || 'Delete failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting subject:', error);
+            this.showToast('Error deleting subject', 'error');
+        }
+    }
+    
+    async handleSubjectSubmit(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('subject-name').value.trim();
+        const keywords = document.getElementById('subject-keywords').value.trim();
+        const priority = parseInt(document.getElementById('subject-priority').value);
+        const color = document.getElementById('subject-color').value;
+        const subjectId = document.getElementById('subject-form').getAttribute('data-subject-id');
+        
+        if (!name || !keywords) {
+            this.showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        const data = { name, keywords, priority, color };
+        
+        try {
+            const url = subjectId ? `/api/subjects/${subjectId}` : '/api/subjects';
+            const method = subjectId ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast(result.message, 'success');
+                this.hideModal('subject-modal');
+                await this.loadSubjects();
+                await this.loadFilesBySubject();
+            } else {
+                this.showToast(result.error || 'Operation failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving subject:', error);
+            this.showToast('Error saving subject', 'error');
+        }
+    }
+    
+    showAutoClassifyModal() {
+        this.showModal('auto-classify-modal');
+    }
+    
+    async performAutoClassification() {
+        const threshold = parseFloat(document.getElementById('confidence-threshold').value);
+        
+        try {
+            this.hideModal('auto-classify-modal');
+            this.showLoading('Auto-classifying files...');
+            
+            const response = await fetch('/api/classify/auto', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    confidence_threshold: threshold
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showToast(result.message, 'success');
+                await this.loadFilesBySubject();
+            } else {
+                this.showToast(result.error || 'Auto-classification failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error auto-classifying:', error);
+            this.showToast('Error during auto-classification', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+    
+    toggleView() {
+        this.isSubjectView = !this.isSubjectView;
+        const btn = document.getElementById('view-toggle-btn');
+        const icon = btn.querySelector('i');
+        
+        if (this.isSubjectView) {
+            btn.innerHTML = '<i class="fas fa-toggle-off"></i> File Type View';
+            document.getElementById('subject-organization-section').style.display = 'block';
+            // Hide other sections if needed
+        } else {
+            btn.innerHTML = '<i class="fas fa-toggle-on"></i> Subject View';
+            document.getElementById('subject-organization-section').style.display = 'none';
+            // Show other sections
+        }
+    }
+    
+    showModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+    }
+    
+    hideModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+    }
+    
+    clearSelection() {
+        this.selectedFiles.clear();
+        document.querySelectorAll('.file-item-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            checkbox.closest('.file-item').classList.remove('selected');
+        });
+        this.updateBulkOperations();
+    }
+    
+    updateBulkOperations() {
+        const selectedCount = this.selectedFiles.size;
+        const bulkOps = document.getElementById('bulk-operations');
+        
+        if (selectedCount > 0) {
+            bulkOps?.classList.add('show');
+            document.getElementById('selected-count').textContent = selectedCount;
+        } else {
+            bulkOps?.classList.remove('show');
+        }
+    }
+    
+    showLoading(message) {
+        const overlay = document.getElementById('loading-overlay');
+        const messageEl = document.getElementById('loading-message');
+        if (messageEl) messageEl.textContent = message;
+        if (overlay) overlay.style.display = 'flex';
+    }
+    
+    hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'none';
     }
     
     escapeHtml(text) {
