@@ -13,6 +13,7 @@ class ClassroomDownloader {
         this.selectedFiles = new Set();
         this.draggedFiles = [];
         this.isSubjectView = true;
+        this.llmAvailable = false;
         
         this.init();
     }
@@ -27,6 +28,7 @@ class ClassroomDownloader {
         if (this.isAuthenticated) {
             await this.loadSubjects();
             await this.loadFilesBySubject();
+            await this.checkLLMStatus();
         }
     }
     
@@ -69,6 +71,7 @@ class ClassroomDownloader {
         // Subject management
         document.getElementById('add-subject-btn')?.addEventListener('click', () => this.showAddSubjectModal());
         document.getElementById('auto-classify-btn')?.addEventListener('click', () => this.showAutoClassifyModal());
+        document.getElementById('llm-classify-btn')?.addEventListener('click', () => this.showLLMClassifyModal());
         document.getElementById('view-toggle-btn')?.addEventListener('click', () => this.toggleView());
         
         // Subject form
@@ -78,6 +81,12 @@ class ClassroomDownloader {
         document.getElementById('confirm-auto-classify')?.addEventListener('click', () => this.performAutoClassification());
         document.getElementById('confidence-threshold')?.addEventListener('input', (e) => {
             document.getElementById('confidence-value').textContent = e.target.value;
+        });
+        
+        // LLM classify
+        document.getElementById('confirm-llm-classify')?.addEventListener('click', () => this.performLLMClassification());
+        document.getElementById('llm-confidence-threshold')?.addEventListener('input', (e) => {
+            document.getElementById('llm-confidence-value').textContent = e.target.value;
         });
         
         // Modal controls
@@ -1231,6 +1240,131 @@ class ClassroomDownloader {
             this.showToast('Error during auto-classification', 'error');
         } finally {
             this.hideLoading();
+        }
+    }
+    
+    async checkLLMStatus() {
+        try {
+            const response = await fetch('/api/llm/status');
+            const status = await response.json();
+            
+            this.llmAvailable = status.available;
+            this.updateLLMStatusUI(status);
+            
+        } catch (error) {
+            console.error('Error checking LLM status:', error);
+            this.llmAvailable = false;
+            this.updateLLMStatusUI({ available: false });
+        }
+    }
+    
+    updateLLMStatusUI(status) {
+        const statusEl = document.getElementById('llm-status');
+        const llmBtn = document.getElementById('llm-classify-btn');
+        
+        if (statusEl) {
+            statusEl.className = 'llm-status ' + (status.available ? 'available' : 'unavailable');
+            statusEl.querySelector('span').textContent = status.available ? 'AI Ready' : 'AI Unavailable';
+        }
+        
+        if (llmBtn) {
+            llmBtn.disabled = !status.available;
+            if (!status.available) {
+                llmBtn.title = 'AI classification requires GEMINI_API_KEY';
+            }
+        }
+    }
+    
+    showLLMClassifyModal() {
+        if (!this.llmAvailable) {
+            this.showToast('AI classification is not available. Please check your GEMINI_API_KEY configuration.', 'error');
+            return;
+        }
+        this.showModal('llm-classify-modal');
+    }
+    
+    async performLLMClassification() {
+        const threshold = parseFloat(document.getElementById('llm-confidence-threshold').value);
+        const autoCreateSubjects = document.getElementById('llm-auto-create-subjects').checked;
+        
+        try {
+            this.hideModal('llm-classify-modal');
+            this.showLoading('AI is analyzing documents...');
+            
+            const progressEl = document.getElementById('llm-analysis-progress');
+            const progressText = document.getElementById('llm-progress-text');
+            
+            if (progressEl) progressEl.style.display = 'block';
+            
+            // Update progress text
+            if (progressText) progressText.textContent = 'Extracting document content...';
+            
+            const response = await fetch('/api/classify/llm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    confidence_threshold: threshold,
+                    auto_create_subjects: autoCreateSubjects
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                this.showLLMResults(result.results);
+                await this.loadSubjects(); // Reload subjects in case new ones were created
+                await this.loadFilesBySubject();
+            } else {
+                this.showToast(result.error || 'AI classification failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error during LLM classification:', error);
+            this.showToast('Error during AI analysis', 'error');
+        } finally {
+            this.hideLoading();
+            const progressEl = document.getElementById('llm-analysis-progress');
+            if (progressEl) progressEl.style.display = 'none';
+        }
+    }
+    
+    showLLMResults(results) {
+        const message = `
+AI Analysis Complete:
+• ${results.total_analyzed} files analyzed
+• ${results.successfully_classified} files automatically classified
+• ${results.new_subjects_created} new subjects created
+• ${results.low_confidence_files.length} files need manual review
+${results.errors.length > 0 ? `• ${results.errors.length} errors occurred` : ''}
+        `.trim();
+        
+        this.showToast(message, 'success');
+        
+        // Show detailed results if there are low confidence files
+        if (results.low_confidence_files.length > 0) {
+            console.log('Files needing manual review:', results.low_confidence_files);
+        }
+        
+        if (results.errors.length > 0) {
+            console.log('Classification errors:', results.errors);
+        }
+    }
+    
+    async getLLMSuggestions(materialId) {
+        try {
+            const response = await fetch(`/api/files/${materialId}/llm-suggestions`);
+            const result = await response.json();
+            
+            if (response.ok) {
+                return result.suggestions || [];
+            } else {
+                console.error('Error getting LLM suggestions:', result.error);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching LLM suggestions:', error);
+            return [];
         }
     }
     

@@ -267,9 +267,222 @@ body {
     border: 1px solid #f6ad55;
 }
 
+.classification-llm {
+    background: #e6f3ff;
+    color: #0066cc;
+    border: 1px solid #66b3ff;
+}
+
 .unclassified-bin {
     border-color: #fbb6ce;
     background: linear-gradient(135deg, #fed7e2 0%, #fbb6ce 100%);
+}
+
+/* LLM Suggestion Styles */
+.llm-suggestion {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.llm-suggestion:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+}
+
+.llm-suggestion.selected {
+    background: #e6f3ff;
+    border-color: #0066cc;
+}
+
+.suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.suggestion-subject {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 1rem;
+}
+
+.suggestion-confidence {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+.confidence-bar {
+    width: 50px;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f56565 0%, #fbd38d 50%, #48bb78 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.suggestion-meta {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.meta-badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.meta-badge.new-subject {
+    background: #e6fffa;
+    color: #319795;
+    border: 1px solid #81e6d9;
+}
+
+.meta-badge.existing-subject {
+    background: #edf2f7;
+    color: #4a5568;
+    border: 1px solid #cbd5e0;
+}
+
+.suggestion-keywords {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-bottom: 0.5rem;
+}
+
+.suggestion-reasoning {
+    font-size: 0.85rem;
+    color: #4a5568;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* LLM Status Indicator */
+.llm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.llm-status.available {
+    background: #e6fffa;
+    color: #319795;
+}
+
+.llm-status.unavailable {
+    background: #fed7d7;
+    color: #e53e3e;
+}
+
+.llm-status.loading {
+    background: #fef5e7;
+    color: #dd6b20;
+}
+
+/* LLM Analysis Results */
+.llm-results {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.results-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.stat-box {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-top: 0.25rem;
+}
+
+/* Document Content Preview */
+.content-preview {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    max-height: 120px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: #4a5568;
+}
+
+/* Auto-Classification Controls */
+.auto-classify-controls {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.threshold-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.threshold-slider input[type="range"] {
+    flex: 1;
+}
+
+.threshold-value {
+    font-weight: 600;
+    color: #2d3748;
+    min-width: 3rem;
+    text-align: center;
 }
 
 .empty-bin {

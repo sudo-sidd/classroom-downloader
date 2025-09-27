@@ -18,6 +18,7 @@ from backend.classroom_api import ClassroomAPIClient
 from backend.downloader import FileDownloader
 from backend.index_generator import IndexGenerator
 from backend.subject_classifier import SubjectClassifier
+from backend.llm_analyzer import LLMDocumentAnalyzer
 
 
 # Configure logging
@@ -45,6 +46,7 @@ classroom_client: Optional[ClassroomAPIClient] = None
 downloader: Optional[FileDownloader] = None
 index_generator: Optional[IndexGenerator] = None
 subject_classifier: Optional[SubjectClassifier] = None
+llm_analyzer: Optional[LLMDocumentAnalyzer] = None
 
 # Global state for downloads
 current_download_status: Dict[str, Any] = {}
@@ -53,7 +55,7 @@ download_lock = threading.Lock()
 
 def initialize_managers():
     """Initialize all manager instances."""
-    global auth_manager, db_manager, file_manager, classroom_client, downloader, index_generator, subject_classifier
+    global auth_manager, db_manager, file_manager, classroom_client, downloader, index_generator, subject_classifier, llm_analyzer
     
     try:
         # Setup credentials template if needed
@@ -71,8 +73,13 @@ def initialize_managers():
         downloader = FileDownloader(auth_manager, file_manager, db_manager)
         index_generator = IndexGenerator(file_manager, db_manager)
         subject_classifier = SubjectClassifier(db_manager)
+        llm_analyzer = LLMDocumentAnalyzer(db_manager)
         
         logger.info("All managers initialized successfully")
+        if llm_analyzer.is_available():
+            logger.info("LLM Document Analyzer is ready for intelligent classification")
+        else:
+            logger.warning("LLM Document Analyzer is not available - check GEMINI_API_KEY")
         return True
         
     except Exception as e:
@@ -892,6 +899,105 @@ def api_get_classification_stats():
         
     except Exception as e:
         logger.error(f"Error getting classification stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/classify/llm', methods=['POST'])
+def api_llm_classify():
+    """Perform LLM-based intelligent classification of files."""
+    try:
+        if not all([db_manager, llm_analyzer]):
+            return jsonify({'error': 'Required managers not initialized'}), 500
+            
+        if not llm_analyzer.is_available():
+            return jsonify({'error': 'LLM analyzer not available. Check GEMINI_API_KEY in environment.'}), 500
+            
+        data = request.get_json() or {}
+        material_ids = data.get('material_ids', [])
+        auto_create_subjects = data.get('auto_create_subjects', True)
+        confidence_threshold = float(data.get('confidence_threshold', 0.7))
+        
+        # Get materials to analyze
+        if material_ids:
+            all_materials = db_manager.get_all_materials()
+            materials_to_analyze = [m for m in all_materials if m['id'] in material_ids]
+        else:
+            # Analyze all unclassified files
+            files_by_subject = db_manager.get_files_by_subject()
+            materials_to_analyze = files_by_subject.get('unclassified', [])
+        
+        if not materials_to_analyze:
+            return jsonify({'message': 'No files to analyze', 'results': {}})
+        
+        # Perform async analysis
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            results = loop.run_until_complete(
+                llm_analyzer.analyze_and_classify_files(
+                    materials_to_analyze,
+                    auto_create_subjects,
+                    confidence_threshold
+                )
+            )
+        finally:
+            loop.close()
+        
+        return jsonify({
+            'message': f'Analyzed {results["total_analyzed"]} files, classified {results["successfully_classified"]}',
+            'results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error performing LLM classification: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/files/<int:material_id>/llm-suggestions')
+def api_get_llm_suggestions(material_id):
+    """Get LLM-powered subject suggestions for a specific file."""
+    try:
+        if not all([db_manager, llm_analyzer]):
+            return jsonify({'error': 'Required managers not initialized'}), 500
+            
+        if not llm_analyzer.is_available():
+            return jsonify({'error': 'LLM analyzer not available'}), 500
+        
+        # Perform async analysis
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            suggestions = loop.run_until_complete(
+                llm_analyzer.get_subject_suggestions_for_file(material_id)
+            )
+        finally:
+            loop.close()
+        
+        return jsonify(suggestions)
+        
+    except Exception as e:
+        logger.error(f"Error getting LLM suggestions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/llm/status')
+def api_llm_status():
+    """Get LLM analyzer status and capabilities."""
+    try:
+        status = {
+            'available': llm_analyzer.is_available() if llm_analyzer else False,
+            'has_api_key': bool(os.getenv('GEMINI_API_KEY')),
+            'supported_formats': ['pdf', 'docx', 'txt', 'md'] if llm_analyzer and llm_analyzer.is_available() else []
+        }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error getting LLM status: {e}")
         return jsonify({'error': str(e)}), 500
 
 

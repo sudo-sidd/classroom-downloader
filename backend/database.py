@@ -37,7 +37,10 @@ class DatabaseManager:
                         download_date TEXT,
                         is_duplicate INTEGER DEFAULT 0,
                         original_url TEXT,
-                        description TEXT
+                        description TEXT,
+                        announcement_text TEXT,
+                        extracted_content TEXT,
+                        content_summary TEXT
                     )
                 """)
                 
@@ -532,3 +535,7 @@ class DatabaseManager:
         except sqlite3.Error as e:
             logging.error(f"Error getting classification statistics: {e}")
             return {}
+
+    def get_connection(self):
+        """Get a database connection context manager."""
+        return sqlite3.connect(self.db_path)
