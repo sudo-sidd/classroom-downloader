@@ -217,7 +217,6 @@ class ClassroomDownloader {
                 if (event.data.status === 'success') {
                     this.isAuthenticated = true;
                     this.showToast('Authentication successful!', 'success');
-                    await this.loadCourses();
                 } else {
                     this.showToast(event.data.message || 'Authentication failed', 'error');
                 }
@@ -315,7 +314,6 @@ class ClassroomDownloader {
                 this.isAuthenticated = true;
                 this.showToast('Authentication successful!', 'success');
                 this.closeAuthModal();
-                await this.loadCourses();
             } else {
                 this.showToast(result.message || 'Authentication failed', 'error');
             }
@@ -456,11 +454,6 @@ class ClassroomDownloader {
     }
     
     async startDownload() {
-        if (this.selectedCourses.size === 0) {
-            this.showToast('Please select at least one course', 'error');
-            return;
-        }
-        
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
         
@@ -468,11 +461,21 @@ class ClassroomDownloader {
             this.downloadInProgress = true;
             this.updateUI();
             
+            // Get all courses
+            const coursesResponse = await fetch('/api/courses');
+            const coursesResult = await coursesResponse.json();
+            
+            if (!coursesResponse.ok) {
+                throw new Error(coursesResult.error || 'Failed to get courses');
+            }
+            
+            const courseIds = coursesResult.courses.map(course => course.id);
+            
             const response = await fetch('/api/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    course_ids: Array.from(this.selectedCourses),
+                    course_ids: courseIds,
                     start_date: startDate ? startDate + 'T00:00:00Z' : null,
                     end_date: endDate ? endDate + 'T23:59:59Z' : null
                 })
@@ -782,7 +785,7 @@ class ClassroomDownloader {
         }
         
         // Show/hide sections based on auth status
-        const sections = ['courses-section', 'date-section', 'download-section'];
+        const sections = ['date-section', 'download-section'];
         sections.forEach(sectionId => {
             const element = document.getElementById(sectionId);
             if (element) {

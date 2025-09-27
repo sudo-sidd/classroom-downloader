@@ -11,6 +11,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from flask import session
 
 
 class AuthCallbackHandler(BaseHTTPRequestHandler):
@@ -76,10 +77,9 @@ class GoogleAPIAuth:
         'https://www.googleapis.com/auth/drive.file'
     ]
     
-    def __init__(self, credentials_file: str = 'credentials.json', token_file: str = 'token.json'):
-        """Initialize with credentials and token file paths."""
+    def __init__(self, credentials_file: str = 'credentials.json'):
+        """Initialize with credentials file path."""
         self.credentials_file = credentials_file
-        self.token_file = token_file
         self.creds: Optional[Credentials] = None
         self._classroom_service = None
         self._drive_service = None
@@ -90,9 +90,10 @@ class GoogleAPIAuth:
         """Authenticate with Google APIs using OAuth2."""
         try:
             port_env = int(os.getenv("AUTH_REDIRECT_PORT", "8080"))
-            # Load existing token if available
-            if os.path.exists(self.token_file):
-                self.creds = Credentials.from_authorized_user_file(self.token_file, self.SCOPES)
+            # Load existing token from session if available
+            creds_json = session.get('google_creds')
+            if creds_json:
+                self.creds = Credentials.from_authorized_user_info(json.loads(creds_json), self.SCOPES)
             
             # If there are no valid credentials, request authorization
             if not self.creds or not self.creds.valid:
@@ -126,10 +127,9 @@ class GoogleAPIAuth:
                         logging.error(f"Local server auth failed: {e}")
                         return False
                 
-                # Save credentials for next run
-                with open(self.token_file, 'w') as token:
-                    token.write(self.creds.to_json())
-                logging.info(f"Saved credentials to {self.token_file}")
+                # Save credentials to session
+                session['google_creds'] = self.creds.to_json()
+                logging.info("Saved credentials to session")
             
             return True
             
@@ -206,9 +206,8 @@ class GoogleAPIAuth:
             flow.fetch_token(authorization_response=authorization_response_url)
             self.creds = flow.credentials
             # Persist credentials
-            with open(self.token_file, 'w') as token:
-                token.write(self.creds.to_json())
-            logging.info(f"Saved credentials to {self.token_file}")
+            session['google_creds'] = self.creds.to_json()
+            logging.info("Saved credentials to session")
             return True
         except Exception as e:
             logging.error(f"Failed to finish web auth: {e}")
@@ -259,9 +258,8 @@ class GoogleAPIAuth:
                     self.creds = flow.credentials
                     
                     # Save credentials
-                    with open(self.token_file, 'w') as token:
-                        token.write(self.creds.to_json())
-                    logging.info(f"Saved credentials to {self.token_file}")
+                    session['google_creds'] = self.creds.to_json()
+                    logging.info("Saved credentials to session")
                     
                     return True
                 else:
@@ -290,9 +288,8 @@ class GoogleAPIAuth:
             delattr(self, '_temp_flow')
             
             # Save credentials
-            with open(self.token_file, 'w') as token:
-                token.write(self.creds.to_json())
-            logging.info(f"Saved credentials to {self.token_file}")
+            session['google_creds'] = self.creds.to_json()
+            logging.info("Saved credentials to session")
             
             return True
             
@@ -342,9 +339,9 @@ class GoogleAPIAuth:
     def revoke_credentials(self) -> bool:
         """Revoke stored credentials."""
         try:
-            if os.path.exists(self.token_file):
-                os.remove(self.token_file)
-                logging.info("Removed token file")
+            if 'google_creds' in session:
+                session.pop('google_creds')
+                logging.info("Removed credentials from session")
             
             self.creds = None
             self._classroom_service = None
