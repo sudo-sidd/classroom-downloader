@@ -324,13 +324,15 @@ class ClassroomAPIClient:
                     
                     # Process different attachment types
                     if 'driveFile' in attachment:
-                        drive_file = attachment['driveFile']
+                        # Classroom API schema: attachment.driveFile.driveFile.{id,title,thumbnailUrl,alternateLink}
+                        df = attachment.get('driveFile') or {}
+                        inner = df.get('driveFile') or df  # be tolerant to both shapes
                         attachment_info.update({
                             'type': 'drive_file',
-                            'drive_file_id': drive_file.get('id'),
-                            'title': drive_file.get('title', 'Untitled'),
-                            'thumbnail_url': drive_file.get('thumbnailUrl'),
-                            'alternate_link': drive_file.get('alternateLink')
+                            'drive_file_id': inner.get('id'),
+                            'title': inner.get('title', 'Untitled'),
+                            'thumbnail_url': inner.get('thumbnailUrl'),
+                            'alternate_link': inner.get('alternateLink')
                         })
                     elif 'youTubeVideo' in attachment:
                         youtube_video = attachment['youTubeVideo']

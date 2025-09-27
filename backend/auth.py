@@ -69,6 +69,8 @@ class GoogleAPIAuth:
     # Use student-submissions scopes for reading submissions
     'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
     'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
+    # Read-only access to coursework materials
+    'https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly',
         'https://www.googleapis.com/auth/classroom.announcements.readonly',
         'https://www.googleapis.com/auth/drive.readonly',
         'https://www.googleapis.com/auth/drive.file'
