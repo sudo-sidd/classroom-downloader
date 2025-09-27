@@ -239,7 +239,9 @@ downloads/
 The Flask backend provides REST API endpoints:
 
 ### Authentication
-- `POST /api/authenticate` - Start OAuth flow
+- `GET /oauth2/start` - Returns Google OAuth URL (popup flow)
+- `GET /oauth2/callback` - Handles Google redirect in popup and closes it
+- `POST /api/authenticate` - Legacy/manual flow support (kept for fallback)
 - `POST /api/logout` - Revoke credentials
 - `GET /api/status` - Check auth and system status
 

@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs
 from typing import Optional
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -66,8 +66,9 @@ class GoogleAPIAuth:
     # OAuth 2.0 scopes for Google Classroom and Drive APIs
     SCOPES = [
         'https://www.googleapis.com/auth/classroom.courses.readonly',
-        'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
-        'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+    # Use student-submissions scopes for reading submissions
+    'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
+    'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
         'https://www.googleapis.com/auth/classroom.announcements.readonly',
         'https://www.googleapis.com/auth/drive.readonly',
         'https://www.googleapis.com/auth/drive.file'
@@ -80,10 +81,13 @@ class GoogleAPIAuth:
         self.creds: Optional[Credentials] = None
         self._classroom_service = None
         self._drive_service = None
+        # Store in-progress web flows by state for popup-based auth
+        self._web_flows: dict[str, Flow] = {}
         
     def authenticate(self) -> bool:
         """Authenticate with Google APIs using OAuth2."""
         try:
+            port_env = int(os.getenv("AUTH_REDIRECT_PORT", "8080"))
             # Load existing token if available
             if os.path.exists(self.token_file):
                 self.creds = Credentials.from_authorized_user_file(self.token_file, self.SCOPES)
@@ -103,15 +107,22 @@ class GoogleAPIAuth:
                         logging.error(f"Credentials file not found: {self.credentials_file}")
                         return False
                     
-                    # Try automatic authentication with temp server
-                    logging.info("Attempting automatic authentication with temporary server")
-                    success = self.authenticate_with_temp_server()
-                    if success:
-                        return True
-                    else:
-                        # Fall back to manual authentication
-                        logging.info("Automatic authentication failed, falling back to manual flow")
-                        return False  # This will trigger the manual authentication flow
+                    # Use the built-in local server flow for installed apps (loopback IP)
+                    try:
+                        flow = InstalledAppFlow.from_client_secrets_file(
+                            self.credentials_file, self.SCOPES
+                        )
+                        # Use configurable loopback port; must match Cloud Console if using Web client
+                        self.creds = flow.run_local_server(
+                            port=port_env,
+                            open_browser=True,
+                            authorization_prompt_message='Please visit this URL to authorize the application: {url}',
+                            success_message='Authorization complete. You may close this window.'
+                        )
+                        logging.info("Obtained new credentials via local server loopback flow")
+                    except Exception as e:
+                        logging.error(f"Local server auth failed: {e}")
+                        return False
                 
                 # Save credentials for next run
                 with open(self.token_file, 'w') as token:
@@ -134,9 +145,9 @@ class GoogleAPIAuth:
                 self.credentials_file, self.SCOPES
             )
             
-            # Use a proper redirect URI for web applications
-            # This needs to be registered in Google Cloud Console
-            flow.redirect_uri = 'http://localhost:8080'
+            port_env = int(os.getenv("AUTH_REDIRECT_PORT", "8080"))
+            # Use loopback URI (installed app pattern). If using a Web client, these URIs must be added in Cloud Console.
+            flow.redirect_uri = f'http://localhost:{port_env}/'
             auth_url, _ = flow.authorization_url(
                 prompt='consent',
                 access_type='offline',
@@ -151,6 +162,55 @@ class GoogleAPIAuth:
         except Exception as e:
             logging.error(f"Failed to generate auth URL: {e}")
             raise
+
+    def start_web_auth(self, redirect_uri: str) -> str:
+        """Start a web-based OAuth flow and return the auth URL.
+        The redirect_uri should be a loopback address on this machine, e.g., http://127.0.0.1:5000/oauth2/callback
+        """
+        try:
+            if not os.path.exists(self.credentials_file):
+                raise Exception("Credentials file not found")
+
+            # Allow HTTP loopback redirect during local development
+            if redirect_uri.startswith('http://'):
+                os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+            flow = Flow.from_client_secrets_file(
+                self.credentials_file,
+                scopes=self.SCOPES,
+                redirect_uri=redirect_uri,
+            )
+            auth_url, state = flow.authorization_url(
+                prompt='consent',
+                access_type='offline',
+                include_granted_scopes='true'
+            )
+            # Save flow by state to complete it later
+            self._web_flows[state] = flow
+            return auth_url
+        except Exception as e:
+            logging.error(f"Failed to start web auth: {e}")
+            raise
+
+    def finish_web_auth(self, state: str, authorization_response_url: str) -> bool:
+        """Finish a web-based OAuth flow using the given authorization response URL."""
+        try:
+            flow = self._web_flows.pop(state, None)
+            if not flow:
+                raise Exception("Invalid or expired auth state. Please retry.")
+            # Ensure HTTP is allowed for local development callbacks
+            if getattr(flow, 'redirect_uri', '').startswith('http://'):
+                os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+            flow.fetch_token(authorization_response=authorization_response_url)
+            self.creds = flow.credentials
+            # Persist credentials
+            with open(self.token_file, 'w') as token:
+                token.write(self.creds.to_json())
+            logging.info(f"Saved credentials to {self.token_file}")
+            return True
+        except Exception as e:
+            logging.error(f"Failed to finish web auth: {e}")
+            return False
     
     def authenticate_with_temp_server(self) -> bool:
         """Authenticate using a temporary web server to catch the callback."""
@@ -163,8 +223,9 @@ class GoogleAPIAuth:
                 self.credentials_file, self.SCOPES
             )
             
-            # Start a temporary server on port 8080
-            server = HTTPServer(('localhost', 8080), AuthCallbackHandler)
+            port_env = int(os.getenv("AUTH_REDIRECT_PORT", "8080"))
+            # Start a temporary server on configured port
+            server = HTTPServer(('localhost', port_env), AuthCallbackHandler)
             server.auth_code = None
             
             # Start server in background thread
@@ -174,7 +235,7 @@ class GoogleAPIAuth:
             
             try:
                 # Set redirect URI and get auth URL
-                flow.redirect_uri = 'http://localhost:8080'
+                flow.redirect_uri = f'http://localhost:{port_env}/'
                 auth_url, _ = flow.authorization_url(
                     prompt='consent',
                     access_type='offline',
@@ -234,7 +295,10 @@ class GoogleAPIAuth:
             return True
             
         except Exception as e:
-            logging.error(f"Failed to authenticate with code: {e}")
+            logging.error(
+                "Failed to authenticate with code: %s. Ensure the redirect URI matches exactly (including trailing slash) and your OAuth client type is Desktop (Installed) or has loopback URIs added.",
+                e,
+            )
             return False
     
     def get_classroom_service(self):
@@ -371,12 +435,12 @@ IMPORTANT: Make sure your OAuth consent screen is configured with:
 - Application type: Desktop application
 - Test users: Add your Google account email
 - Required scopes (add these in the OAuth consent screen):
-  * https://www.googleapis.com/auth/classroom.courses.readonly
-  * https://www.googleapis.com/auth/classroom.coursework.students.readonly  
-  * https://www.googleapis.com/auth/classroom.coursework.me.readonly
-  * https://www.googleapis.com/auth/classroom.announcements.readonly
-  * https://www.googleapis.com/auth/drive.readonly
-  * https://www.googleapis.com/auth/drive.file
+    * https://www.googleapis.com/auth/classroom.courses.readonly
+    * https://www.googleapis.com/auth/classroom.student-submissions.students.readonly
+    * https://www.googleapis.com/auth/classroom.student-submissions.me.readonly
+    * https://www.googleapis.com/auth/classroom.announcements.readonly
+    * https://www.googleapis.com/auth/drive.readonly
+    * https://www.googleapis.com/auth/drive.file
 
 The downloaded file should have the same structure as this template but with your actual values.
     """

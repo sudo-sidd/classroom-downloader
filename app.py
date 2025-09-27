@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 import threading
 
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, make_response
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest
 
@@ -81,6 +81,57 @@ def initialize_managers():
 def index():
     """Serve the main application page."""
     return render_template('index.html')
+
+# --- Popup-based OAuth endpoints ---
+@app.route('/oauth2/start')
+def oauth2_start():
+        """Return the Google OAuth authorization URL for popup flow."""
+        try:
+                if not auth_manager:
+                        return jsonify({'error': 'Auth manager not initialized'}), 500
+                # Use this server as redirect target
+                redirect_uri = request.url_root.rstrip('/') + url_for('oauth2_callback')
+                auth_url = auth_manager.start_web_auth(redirect_uri)
+                return jsonify({'auth_url': auth_url})
+        except Exception as e:
+                logger.error(f"OAuth start error: {e}")
+                return jsonify({'error': str(e)}), 500
+
+@app.route('/oauth2/callback')
+def oauth2_callback():
+        """Handle Google redirect in popup; closes window and notifies opener."""
+        try:
+                if not auth_manager:
+                        return make_response('Auth manager not initialized', 500)
+                state = request.args.get('state')
+                # Reconstruct full URL to pass to flow
+                authorization_response = request.url
+                success = auth_manager.finish_web_auth(state, authorization_response)
+                status = 'success' if success else 'error'
+                message = 'Authentication successful' if success else 'Authentication failed'
+                # Small HTML that notifies opener and closes popup
+                html = f"""
+<!doctype html>
+<html>
+    <body>
+        <script>
+            try {{
+                if (window.opener && !window.opener.closed) {{
+                    window.opener.postMessage({{ type: 'oauth-result', status: '{status}', message: '{message}' }}, '*');
+                }}
+            }} catch (e) {{}}
+            window.close();
+        </script>
+        <noscript>{message}. You can close this window.</noscript>
+    </body>
+ </html>
+                """
+                resp = make_response(html)
+                resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+                return resp
+        except Exception as e:
+                logger.error(f"OAuth callback error: {e}")
+                return make_response('Authentication error', 500)
 
 
 @app.route('/api/status')

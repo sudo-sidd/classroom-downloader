@@ -174,3 +174,164 @@ jinja2.exceptions.TemplateNotFound: index.html
 2025-09-26 22:01:50,110 - root - ERROR - Authentication timeout - no authorization code received
 2025-09-26 22:01:50,610 - root - INFO - Automatic authentication failed, falling back to manual flow
 2025-09-26 22:01:50,611 - werkzeug - INFO - 127.0.0.1 - - [26/Sep/2025 22:01:50] "[35m[1mPOST /api/authenticate HTTP/1.1[0m" 202 -
+2025-09-27 07:36:11,150 - root - INFO - Database initialized successfully
+2025-09-27 07:36:11,151 - root - INFO - Base directory ensured: /projects/classroom-downloader/downloads
+2025-09-27 07:36:11,151 - __main__ - INFO - All managers initialized successfully
+2025-09-27 07:36:11,151 - __main__ - INFO - Starting Classroom Downloader on 127.0.0.1:5000
+2025-09-27 07:36:11,152 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-09-27 07:36:11,152 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-27 07:36:13,211 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:36:13] "GET / HTTP/1.1" 200 -
+2025-09-27 07:36:13,297 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:36:13] "GET /static/js/app.js HTTP/1.1" 200 -
+2025-09-27 07:36:13,298 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:36:13] "GET /static/css/style.css HTTP/1.1" 200 -
+2025-09-27 07:36:14,600 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:36:14] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-09-27 07:39:27,866 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:39:27] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 07:39:27,867 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:39:27] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 07:39:27,867 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:39:27] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 07:39:27,871 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:39:27] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 07:39:53,749 - root - INFO - Attempting automatic authentication with temporary server
+2025-09-27 07:39:53,750 - root - INFO - Please visit this URL to authorize: https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=891420061309-4v90nvg2p4dk3e57eqg6816ms09guve4.apps.googleusercontent.com&redirect_uri=http%3A%2F%2Flocalhost%3A8080&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fclassroom.courses.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fclassroom.coursework.students.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fclassroom.coursework.me.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fclassroom.announcements.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file&state=m0MqkqSYjd1kJ1CrCUsXPhQCrekJ3G&prompt=consent&access_type=offline&include_granted_scopes=true
+2025-09-27 07:40:53,764 - root - ERROR - Authentication timeout - no authorization code received
+2025-09-27 07:40:53,769 - root - INFO - Automatic authentication failed, falling back to manual flow
+2025-09-27 07:40:53,770 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:40:53] "[35m[1mPOST /api/authenticate HTTP/1.1[0m" 202 -
+2025-09-27 07:56:26,359 - root - INFO - Database initialized successfully
+2025-09-27 07:56:26,359 - root - INFO - Base directory ensured: /projects/classroom-downloader/downloads
+2025-09-27 07:56:26,359 - __main__ - INFO - All managers initialized successfully
+2025-09-27 07:56:26,359 - __main__ - INFO - Starting Classroom Downloader on 127.0.0.1:5000
+2025-09-27 07:56:26,360 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-09-27 07:56:26,360 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-27 07:56:32,232 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "GET / HTTP/1.1" 200 -
+2025-09-27 07:56:32,252 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-27 07:56:32,252 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "[36mGET /static/js/app.js HTTP/1.1[0m" 304 -
+2025-09-27 07:56:32,282 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 07:56:32,283 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 07:56:32,283 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 07:56:32,296 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:32] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 07:56:35,161 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET / HTTP/1.1" 200 -
+2025-09-27 07:56:35,178 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET /static/css/style.css HTTP/1.1" 200 -
+2025-09-27 07:56:35,180 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET /static/js/app.js HTTP/1.1" 200 -
+2025-09-27 07:56:35,511 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 07:56:35,511 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 07:56:35,512 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 07:56:35,541 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 07:56:35,646 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 07:56:35] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-09-27 08:00:54,515 - google_auth_oauthlib.flow - INFO - "GET / HTTP/1.1" 200 50
+2025-09-27 08:00:54,515 - root - ERROR - Local server auth failed: (mismatching_state) CSRF Warning! State not equal in request and response.
+2025-09-27 08:00:54,516 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:00:54] "[35m[1mPOST /api/authenticate HTTP/1.1[0m" 202 -
+2025-09-27 08:01:08,131 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET / HTTP/1.1" 200 -
+2025-09-27 08:01:08,146 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET /static/css/style.css HTTP/1.1" 200 -
+2025-09-27 08:01:08,152 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET /static/js/app.js HTTP/1.1" 200 -
+2025-09-27 08:01:08,365 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 08:01:08,365 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 08:01:08,366 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 08:01:08,376 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-09-27 08:01:08,408 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:01:08] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 08:13:14,123 - root - INFO - Database initialized successfully
+2025-09-27 08:13:14,123 - root - INFO - Base directory ensured: /projects/classroom-downloader/downloads
+2025-09-27 08:13:14,123 - __main__ - INFO - All managers initialized successfully
+2025-09-27 08:13:14,123 - __main__ - INFO - Starting Classroom Downloader on 127.0.0.1:5000
+2025-09-27 08:13:14,124 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-09-27 08:13:14,124 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-27 08:13:25,002 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "GET / HTTP/1.1" 200 -
+2025-09-27 08:13:25,055 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-27 08:13:25,056 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "GET /static/js/app.js HTTP/1.1" 200 -
+2025-09-27 08:13:25,172 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 08:13:25,174 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 08:13:25,175 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 08:13:25,248 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:25] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 08:13:26,816 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:13:26] "GET /oauth2/start HTTP/1.1" 200 -
+2025-09-27 08:15:57,724 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "GET / HTTP/1.1" 200 -
+2025-09-27 08:15:57,742 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-27 08:15:57,743 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "[36mGET /static/js/app.js HTTP/1.1[0m" 304 -
+2025-09-27 08:15:57,757 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 08:15:57,758 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 08:15:57,758 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 08:15:57,777 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:57] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 08:15:59,475 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:15:59] "GET /oauth2/start HTTP/1.1" 200 -
+2025-09-27 08:16:08,037 - root - ERROR - Failed to finish web auth: (insecure_transport) OAuth 2 MUST utilize https.
+2025-09-27 08:16:08,037 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:16:08] "GET /oauth2/callback?state=O7iDRS5MzvVjv2SexdcaGtYtrRmwcE&code=4/0AVGzR1BzXJoOU621ZHsXBtL6uLn9ERjhOr2ck-F3DJqIQFr1dFj7PEwPOM2ZnFjqi5so3Q&scope=https://www.googleapis.com/auth/classroom.courses.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.students.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.me.readonly%20https://www.googleapis.com/auth/classroom.announcements.readonly%20https://www.googleapis.com/auth/drive.readonly%20https://www.googleapis.com/auth/drive.file HTTP/1.1" 200 -
+2025-09-27 08:16:56,102 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:16:56] "GET /oauth2/start HTTP/1.1" 200 -
+2025-09-27 08:17:06,274 - root - ERROR - Failed to finish web auth: (insecure_transport) OAuth 2 MUST utilize https.
+2025-09-27 08:17:06,274 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:17:06] "GET /oauth2/callback?state=2fdjn4HGy4jW50NiEQlOgoda5pbWrO&code=4/0AVGzR1D5m6gviSd-9RaezL52rk07i96jINwpVLiWvZepneyShlBzjNeS2QYxAOQLlyOueQ&scope=https://www.googleapis.com/auth/classroom.courses.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.students.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.me.readonly%20https://www.googleapis.com/auth/classroom.announcements.readonly%20https://www.googleapis.com/auth/drive.readonly%20https://www.googleapis.com/auth/drive.file HTTP/1.1" 200 -
+2025-09-27 08:22:11,145 - root - INFO - Database initialized successfully
+2025-09-27 08:22:11,145 - root - INFO - Base directory ensured: /projects/classroom-downloader/downloads
+2025-09-27 08:22:11,145 - __main__ - INFO - All managers initialized successfully
+2025-09-27 08:22:11,145 - __main__ - INFO - Starting Classroom Downloader on 127.0.0.1:5000
+2025-09-27 08:22:11,146 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-09-27 08:22:11,146 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-27 08:22:14,217 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "GET / HTTP/1.1" 200 -
+2025-09-27 08:22:14,316 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-27 08:22:14,317 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "[36mGET /static/js/app.js HTTP/1.1[0m" 304 -
+2025-09-27 08:22:14,400 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 08:22:14,401 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 08:22:14,403 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 08:22:14,478 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:14] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 08:22:16,293 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:16] "GET /oauth2/start HTTP/1.1" 200 -
+2025-09-27 08:22:24,258 - root - ERROR - Failed to finish web auth: Scope has changed from "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/classroom.announcements.readonly https://www.googleapis.com/auth/classroom.coursework.students.readonly https://www.googleapis.com/auth/classroom.courses.readonly" to "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/classroom.student-submissions.me.readonly https://www.googleapis.com/auth/classroom.announcements.readonly https://www.googleapis.com/auth/classroom.student-submissions.students.readonly https://www.googleapis.com/auth/classroom.courses.readonly".
+2025-09-27 08:22:24,258 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:22:24] "GET /oauth2/callback?state=6WtgQg6Yn1dJqbMniPFWSxCVCbH1uv&code=4/0AVGzR1CUFz1-je5IEEgBixTG8E_M2Rr_-PcWgFV4D4qkozLjMYShaGrdLmm7quadPtNQvA&scope=https://www.googleapis.com/auth/classroom.courses.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.students.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.me.readonly%20https://www.googleapis.com/auth/classroom.announcements.readonly%20https://www.googleapis.com/auth/drive.readonly%20https://www.googleapis.com/auth/drive.file HTTP/1.1" 200 -
+2025-09-27 08:24:00,874 - root - INFO - Database initialized successfully
+2025-09-27 08:24:00,874 - root - INFO - Base directory ensured: /projects/classroom-downloader/downloads
+2025-09-27 08:24:00,874 - __main__ - INFO - All managers initialized successfully
+2025-09-27 08:24:00,874 - __main__ - INFO - Starting Classroom Downloader on 127.0.0.1:5000
+2025-09-27 08:24:00,875 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-09-27 08:24:00,875 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-27 08:24:08,469 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "GET / HTTP/1.1" 200 -
+2025-09-27 08:24:08,523 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-27 08:24:08,524 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "[36mGET /static/js/app.js HTTP/1.1[0m" 304 -
+2025-09-27 08:24:08,648 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "GET /api/statistics HTTP/1.1" 200 -
+2025-09-27 08:24:08,673 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "GET /api/materials/uncategorized HTTP/1.1" 200 -
+2025-09-27 08:24:08,687 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "GET /api/status HTTP/1.1" 200 -
+2025-09-27 08:24:08,732 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:08] "GET /api/settings HTTP/1.1" 200 -
+2025-09-27 08:24:12,174 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:12] "GET /oauth2/start HTTP/1.1" 200 -
+2025-09-27 08:24:18,742 - root - INFO - Saved credentials to token.json
+2025-09-27 08:24:18,743 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:18] "GET /oauth2/callback?state=GaCUuvNf47siAEYDRWGUYdyCp0rVUy&code=4/0AVGzR1B-T7F2ymzomd2G8-Ob-5-efzLy5bs1m2VkRxYAcqVx60MTbKWCSCperHbnN8bRHw&scope=https://www.googleapis.com/auth/classroom.courses.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.students.readonly%20https://www.googleapis.com/auth/classroom.student-submissions.me.readonly%20https://www.googleapis.com/auth/classroom.announcements.readonly%20https://www.googleapis.com/auth/drive.readonly%20https://www.googleapis.com/auth/drive.file HTTP/1.1" 200 -
+2025-09-27 08:24:18,814 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-27 08:24:18,815 - root - INFO - Created Classroom service
+2025-09-27 08:24:18,815 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-09-27 08:24:18,816 - root - INFO - Created Drive service
+2025-09-27 08:24:20,696 - root - INFO - Fetched 1 courses
+2025-09-27 08:24:20,705 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:24:20] "GET /api/courses HTTP/1.1" 200 -
+2025-09-27 08:26:10,142 - __main__ - INFO - Fetching materials for courses: ['529703476109']
+2025-09-27 08:26:10,143 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:26:10] "POST /api/download HTTP/1.1" 200 -
+2025-09-27 08:26:10,143 - root - INFO - Fetching materials for course 529703476109
+2025-09-27 08:26:11,150 - werkzeug - INFO - 127.0.0.1 - - [27/Sep/2025 08:26:11] "GET /api/download/status HTTP/1.1" 200 -
+2025-09-27 08:26:12,253 - root - INFO - Fetched 9 coursework items for course 529703476109
+2025-09-27 08:26:12,540 - googleapiclient.http - WARNING - Encountered 403 Forbidden with reason "PERMISSION_DENIED"
+2025-09-27 08:26:12,540 - root - ERROR - HTTP error fetching coursework materials for course 529703476109: <HttpError 403 when requesting https://classroom.googleapis.com/v1/courses/529703476109/courseWorkMaterials?pageSize=100&orderBy=updateTime+desc&alt=json returned "Request had insufficient authentication scopes.". Details: "[{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_SCOPE_INSUFFICIENT', 'domain': 'googleapis.com', 'metadata': {'method': 'google.classroom.v1.Work.ListCourseWorkMaterial', 'service': 'classroom.googleapis.com'}}]">
+2025-09-27 08:26:13,976 - root - INFO - Fetched 17 announcements for course 529703476109
+2025-09-27 08:26:14,476 - root - INFO - Extracted 27 attachments from materials
+2025-09-27 08:26:14,476 - __main__ - INFO - Found 27 attachments to download
+2025-09-27 08:26:14,476 - root - INFO - Starting download of 27 attachments
+2025-09-27 08:26:14,476 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,476 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - WARNING - Unknown attachment type: unknown
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - WARNING - Unknown attachment type: unknown
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - ERROR - No drive file ID found
+2025-09-27 08:26:14,477 - root - INFO - Download completed: 0 successful, 27 failed
+2025-09-27 08:26:14,477 - __main__ - INFO - Download completed successfully

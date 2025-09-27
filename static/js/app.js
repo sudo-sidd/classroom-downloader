@@ -138,28 +138,40 @@ class ClassroomDownloader {
         try {
             this.showLoading('Authenticating with Google...');
             
-            const response = await fetch('/api/authenticate', { method: 'POST' });
-            const result = await response.json();
-            
-            if (response.ok && result.success) {
-                this.isAuthenticated = true;
-                this.showToast('Authentication successful!', 'success');
-                await this.loadCourses();
-            } else if (response.status === 202 && result.auth_url) {
-                // Manual authentication required
-                this.hideLoading();
-                this.showManualAuthDialog(result.auth_url, result.instructions);
-            } else {
-                this.showToast(result.message || 'Authentication failed', 'error');
+            // Prefer popup-based OAuth to avoid redirecting away
+            const startResp = await fetch('/oauth2/start');
+            const startData = await startResp.json();
+            if (!startResp.ok || !startData.auth_url) {
+                throw new Error(startData.error || 'Failed to start OAuth');
             }
+
+            const popup = window.open(startData.auth_url, 'oauthPopup', 'width=550,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');
+            if (!popup) {
+                this.hideLoading();
+                this.showToast('Popup blocked. Allow popups and try again.', 'error');
+                return;
+            }
+
+            const onMessage = async (event) => {
+                if (!event || !event.data || event.data.type !== 'oauth-result') return;
+                window.removeEventListener('message', onMessage);
+                this.hideLoading();
+                if (event.data.status === 'success') {
+                    this.isAuthenticated = true;
+                    this.showToast('Authentication successful!', 'success');
+                    await this.loadCourses();
+                } else {
+                    this.showToast(event.data.message || 'Authentication failed', 'error');
+                }
+                this.updateUI();
+            };
+            window.addEventListener('message', onMessage);
             
         } catch (error) {
             console.error('Authentication error:', error);
             this.showToast('Authentication error', 'error');
         } finally {
-            if (!this.isAuthenticated) {
-                this.hideLoading();
-            }
+            // popup flow will hide loading on message
             this.updateUI();
         }
     }
