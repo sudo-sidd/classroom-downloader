@@ -72,6 +72,16 @@ class DownloadProgress:
     
     def get_status_dict(self) -> Dict[str, Any]:
         """Get current status as dictionary."""
+        # Get recent activity logs (last 10 entries)
+        recent_logs = []
+        for entry in self.files_processed[-10:]:
+            if entry['success'] and entry['error'] != "Skipped - duplicate":
+                recent_logs.append(f"✓ Downloaded: {entry['filename']}")
+            elif entry['error'] == "Skipped - duplicate":
+                recent_logs.append(f"⏭ Skipped: {entry['filename']} (duplicate)")
+            else:
+                recent_logs.append(f"✗ Failed: {entry['filename']} - {entry['error']}")
+        
         return {
             'session_id': self.session_id,
             'total_files': self.total_files,
@@ -83,6 +93,7 @@ class DownloadProgress:
             'overall_progress': self.get_overall_progress(),
             'elapsed_time': time.time() - self.start_time,
             'errors': self.errors[-10:],  # Last 10 errors
+            'recent_logs': recent_logs,  # Recent activity logs
             'is_complete': (self.completed_files + self.failed_files + self.duplicates_skipped) >= self.total_files
         }
 

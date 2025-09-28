@@ -899,6 +899,45 @@ select:focus {
     margin-bottom: 1rem;
 }
 
+.download-logs {
+    margin-bottom: 1rem;
+}
+
+.download-logs h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #2d3748;
+}
+
+.logs-container {
+    background-color: #1a202c;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.log-entry {
+    margin-bottom: 0.25rem;
+    padding: 0.125rem 0;
+}
+
+.log-entry.success {
+    color: #68d391;
+}
+
+.log-entry.error {
+    color: #fed7d7;
+}
+
+.log-entry.info {
+    color: #90cdf4;
+}
+
 .download-errors {
     background-color: #fed7d7;
     border: 1px solid #feb2b2;

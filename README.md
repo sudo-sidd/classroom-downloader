@@ -1,8 +1,8 @@
 # Google Classroom Downloader
 
-A comprehensive full-stack web application that automatically downloads and organizes Google Classroom materials on your local system. Built with Flask (Python) backend and vanilla JavaScript frontend.
+A comprehensive full-stack web application that automatically downloads and organizes Google Classroom materials on your local system. Built with Flask (Python) backend and vanilla JavaScript frontend with real-time progress tracking and AI-powered organization.
 
-## Features
+## ✨ Key Features
 
 ### Core Functionality
 - **Google Classroom Integration**: Fetches courses, coursework, materials, and announcements via Google Classroom API
@@ -11,17 +11,27 @@ A comprehensive full-stack web application that automatically downloads and orga
 - **File Deduplication**: Prevents downloading duplicate files using hash comparison
 - **Parallel Downloads**: Supports concurrent downloads with rate limiting
 - **SQLite Database**: Maintains searchable index of all downloaded materials
-- **Progress Tracking**: Real-time download progress with error reporting
+- **Real-time Progress Tracking**: Live download progress with detailed logging and file-level updates
 
-### Web Interface
-- **Authentication**: Secure OAuth2 authentication with Google
-- **Course Selection**: Choose specific courses and date ranges for download
-- **Progress Monitoring**: Real-time progress updates with file-level details
-- **Material Browser**: Search and browse downloaded materials
-- **File Reassignment**: Move uncategorized files to correct courses via drag-and-drop
-- **Statistics Dashboard**: View download statistics by course and file type
+### 🎯 Enhanced Web Interface
+- **Auto-refresh on Load**: Courses and subject organization refresh automatically when page loads
+- **Auto-refresh on Login**: All data refreshes automatically after successful authentication
+- **Real-time Download Progress**: Visible progress bars, file counts, current file processing, and activity logs
+- **Live Download Logging**: See exactly what's happening during downloads with real-time status updates
+- **Subject Organization**: Intelligent file categorization with drag-and-drop interface
+- **AI Classification**: Powered by Google Gemini for intelligent document analysis and classification
+- **Progress Persistence**: Download progress continues to display even after page refresh
 
-### File Management
+### 🤖 AI-Powered Features
+- **Intelligent Subject Classification**: Uses Google Gemini AI to automatically categorize files by subject
+- **Document Analysis**: AI analyzes document content for better organization
+- **Smart Keyword Matching**: Advanced subject detection based on content and metadata
+- **Confidence Scoring**: AI provides confidence levels for classification decisions
+
+### 📊 Advanced File Management
+- **Subject Bins**: Visual drag-and-drop interface for organizing files by subject
+- **Auto-classification**: Automatic file categorization using keyword matching and AI
+- **Real-time Updates**: Subject organization updates automatically after downloads
 - **Safe Filename Handling**: Automatically sanitizes filenames for filesystem compatibility
 - **Category Organization**: Sorts files into PDFs, Documents, Images, Videos, etc.
 - **HTML Index Generation**: Creates browsable HTML indexes for each course
@@ -31,41 +41,51 @@ A comprehensive full-stack web application that automatically downloads and orga
 
 ```
 classroom-downloader/
-├── app.py                      # Main Flask application
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── credentials.json            # Google API credentials (you provide)
-├── token.json                  # OAuth tokens (auto-generated)
-├── classroom_materials.db      # SQLite database (auto-created)
+├── app.py                          # Main Flask application
+├── requirements.txt                # Python dependencies
+├── pyproject.toml                  # Python project configuration
+├── uv.lock                        # UV dependency lock file
+├── README.md                      # This file
+├── credentials.json               # Google API credentials (you provide)
+├── token.json                     # OAuth tokens (auto-generated)
+├── classroom_materials.db         # SQLite database (auto-created)
+├── classroom_downloader.log       # Application logs
 │
-├── backend/                    # Backend Python modules
+├── backend/                       # Backend Python modules
 │   ├── __init__.py
-│   ├── auth.py                # Google API authentication
-│   ├── database.py            # SQLite database management
-│   ├── file_manager.py        # File system operations
-│   ├── classroom_api.py       # Google Classroom API client
-│   ├── downloader.py          # File download logic
-│   └── index_generator.py     # HTML index generation
+│   ├── auth.py                   # Google API authentication
+│   ├── database.py               # SQLite database management
+│   ├── file_manager.py           # File system operations
+│   ├── classroom_api.py          # Google Classroom API client
+│   ├── downloader.py             # File download logic
+│   ├── index_generator.py        # HTML index generation
+│   ├── subject_classifier.py     # Subject classification system
+│   └── llm_analyzer.py          # AI-powered document analyzer (Gemini)
 │
 ├── templates/
-│   └── index.html             # Main web interface
+│   └── index.html                # Main web interface with real-time features
 │
 ├── static/
 │   ├── css/
-│   │   └── style.css          # Frontend styles
+│   │   └── style.css             # Enhanced UI styles with progress indicators
 │   └── js/
-│       └── app.js             # Frontend JavaScript
+│       └── app.js                # Enhanced frontend with real-time updates
 │
-└── downloads/                 # Default download directory
-    ├── index.html            # Main materials index
-    ├── Course_Name_1/        # Individual course directories
-    │   ├── index.html        # Course-specific index
+└── downloads/                    # Default download directory
+    ├── index.html               # Main materials index
+    ├── Course_Name_1/           # Individual course directories
+    │   ├── index.html           # Course-specific index
     │   ├── PDFs/
     │   ├── Documents/
     │   ├── Images/
     │   ├── Videos/
+    │   ├── Presentations/
+    │   ├── Spreadsheets/
+    │   ├── Audio/
+    │   ├── Archives/
+    │   ├── Web/
     │   └── Other/
-    └── Uncategorized/        # Files without course assignment
+    └── Uncategorized/           # Files without course assignment
 ```
 
 ## Setup Instructions
@@ -111,8 +131,8 @@ classroom-downloader/
    cd classroom-downloader
    
    # Create virtual environment
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    
    # Install dependencies
    pip install -r requirements.txt
@@ -122,7 +142,15 @@ classroom-downloader/
    - Rename your downloaded credentials file to `credentials.json`
    - Place it in the project root directory
 
-3. **Configure Settings** (Optional):
+3. **Configure AI Features** (Optional):
+   ```bash
+   # Add Google Gemini API key for AI classification
+   export GEMINI_API_KEY="your_gemini_api_key_here"
+   ```
+   - Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Without this, AI classification features will be disabled but basic functionality works
+
+4. **Configure Settings** (Optional):
    ```bash
    # Set custom download directory
    export CLASSROOM_BASE_DIR="/path/to/your/downloads"
@@ -137,7 +165,7 @@ classroom-downloader/
 
 ```bash
 # Activate virtual environment
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Run the application
 python app.py
@@ -145,7 +173,7 @@ python app.py
 
 The application will be available at `http://localhost:5000`
 
-## Usage Guide
+## 🚀 Usage Guide
 
 ### Initial Setup
 
@@ -158,40 +186,78 @@ The application will be available at `http://localhost:5000`
 
 3. **Authenticate with Google**:
    - Click "Authenticate" button
-   - Complete OAuth flow in your browser
+   - Complete OAuth flow in popup window
    - Grant necessary permissions
+   - **Courses and subjects will auto-refresh after successful login**
 
-### Downloading Materials
+### Enhanced Download Experience
 
-1. **Select Courses**:
-   - Click "Refresh Courses" to load available courses
-   - Check courses you want to download
-   - Use "Select All" / "Deselect All" for convenience
+1. **Automatic Data Loading**:
+   - Courses load automatically when page loads
+   - Subject organization refreshes on every page visit
+   - No need to manually refresh - everything updates automatically
 
-2. **Set Date Range** (Optional):
-   - Choose start and end dates
-   - Leave blank to download all materials
+2. **Real-time Download Progress**:
+   - **Live Progress Bar**: Visual progress indicator with percentage
+   - **File Counters**: See completed/total files in real-time
+   - **Current File Display**: Shows exactly which file is being processed
+   - **Download Activity Log**: Real-time log of all download activities
+   - **Error Reporting**: Immediate error notifications with details
 
-3. **Start Download**:
-   - Click "Start Download"
-   - Monitor real-time progress
-   - View any errors in the progress panel
+3. **Smart Course Selection**:
+   - Auto-loaded course list on authentication
+   - Select specific courses or use "Select All"
+   - Optional date range filtering
+
+### 🧠 AI-Powered Subject Organization
+
+1. **Subject Management**:
+   - **Visual Subject Bins**: Drag-and-drop interface for file organization
+   - **Auto-classification**: Files automatically categorized using keyword matching
+   - **AI Classification**: Use Google Gemini for intelligent content analysis
+   - **Confidence Scoring**: AI provides confidence levels for classifications
+
+2. **Using AI Features**:
+   - Click "AI Classify" button (appears when Gemini API key is configured)
+   - Set confidence threshold for automatic classification
+   - Review and approve AI suggestions
+   - Files are automatically moved to appropriate subject bins
+
+3. **Manual Organization**:
+   - Drag files between subject bins
+   - Create new subjects with custom keywords and colors
+   - Assign priority levels for classification precedence
+
+### Real-time Download Monitoring
+
+1. **Progress Tracking Features**:
+   - **Progress Container**: Always visible during downloads
+   - **Live Activity Log**: See real-time download events
+   - **File Processing Status**: Current file being downloaded
+   - **Success/Error Counts**: Immediate feedback on download results
+   - **Completion Summary**: Detailed results when download finishes
+
+2. **Download Log Messages Include**:
+   - Download initiation
+   - File processing updates
+   - Success confirmations
+   - Error notifications
+   - Completion statistics
+   - Data refresh confirmations
 
 ### Managing Downloaded Materials
 
-1. **Browse Materials**:
-   - Use the search function to find specific files
-   - Filter by course or file type
-   - Click links to open files
+1. **Enhanced Browse Experience**:
+   - **Auto-refresh**: Data updates automatically after downloads
+   - **Integrated Search**: Find files quickly with enhanced search
+   - **Subject-based Organization**: Files organized by AI-detected subjects
+   - **Real-time Updates**: File counts and statistics update automatically
 
-2. **Handle Uncategorized Files**:
-   - Review files in "Uncategorized Materials" section
-   - Use dropdown to assign files to correct courses
-   - Files will be moved automatically
-
-3. **View Statistics**:
-   - Check total files, size, and course counts
-   - Monitor uncategorized file count
+2. **Subject Organization**:
+   - **Visual Interface**: Drag-and-drop subject bins
+   - **Automatic Updates**: Subject organization refreshes after each download
+   - **Smart Classification**: Files automatically sorted using AI and keywords
+   - **Manual Override**: Always maintain control with manual organization options
 
 ### Generated HTML Indexes
 
@@ -262,7 +328,18 @@ The Flask backend provides REST API endpoints:
 ### Statistics
 - `GET /api/statistics` - Get database and filesystem stats
 
-## Troubleshooting
+### AI/Subject Organization
+- `GET /api/llm/status` - Check AI analyzer status and capabilities
+- `GET /api/subjects` - Get all subjects
+- `POST /api/subjects` - Create new subject
+- `PUT /api/subjects/<id>` - Update subject
+- `DELETE /api/subjects/<id>` - Delete subject
+- `GET /api/files/by-subject` - Get files organized by subject
+- `POST /api/classify/auto` - Auto-classify files using keywords
+- `POST /api/classify/llm` - AI-classify files using Gemini
+- `POST /api/files/<id>/assign-subject` - Assign file to subject
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
@@ -270,10 +347,28 @@ The Flask backend provides REST API endpoints:
 - Ensure `credentials.json` is in the project root
 - Verify the file is valid JSON from Google Cloud Console
 
+**"AI classification is not available"**
+- Add your `GEMINI_API_KEY` environment variable
+- Get API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- Restart the application after adding the key
+- Check logs for Gemini connection status
+
 **"Authentication failed"**
 - Check that required APIs are enabled in Google Cloud Console
 - Verify OAuth consent screen is properly configured
 - Ensure your account has access to the courses
+
+**"No courses showing" or "Subject organization not loading"**
+- Courses and subjects now auto-refresh on page load and login
+- Check browser console for any JavaScript errors
+- Verify authentication status in the top-right corner
+- Refresh the page to trigger auto-loading
+
+**"Download progress not visible"**
+- Progress container now appears automatically when downloads start
+- Check browser console for any errors
+- Ensure JavaScript is enabled
+- Progress persists even after page refresh
 
 **"Access denied" errors during download**
 - Some files may be private or restricted
@@ -283,7 +378,7 @@ The Flask backend provides REST API endpoints:
 **Download stops or fails**
 - Check internet connection
 - Verify Google API quotas haven't been exceeded
-- Review error logs in the progress panel
+- Review error logs in the progress panel and real-time activity log
 
 ### Performance Optimization
 
@@ -371,11 +466,39 @@ For issues and questions:
 3. Search existing GitHub issues
 4. Create a new issue with detailed information
 
-## Changelog
+## 📈 Changelog
 
-### Version 1.0.0
-- Initial release
+### Version 2.0.0 - Enhanced Real-time Experience
+#### 🚀 Major Features
+- **Auto-refresh Functionality**: Courses and subjects refresh automatically on page load and login
+- **Real-time Download Progress**: Live progress tracking with detailed activity logs
+- **AI-Powered Classification**: Google Gemini integration for intelligent file categorization
+- **Enhanced Subject Organization**: Visual drag-and-drop interface with auto-classification
+- **Progress Persistence**: Download progress continues to display after page refresh
+
+#### ✨ User Experience Improvements
+- **Live Activity Logging**: Real-time download status in user-friendly format
+- **Smart Progress Display**: Automatic progress container management
+- **Enhanced Error Reporting**: Detailed error messages with context
+- **Immediate Feedback**: All actions provide instant visual feedback
+- **Auto-loading Data**: No manual refresh needed for courses or subjects
+
+#### 🤖 AI Features
+- **Gemini Integration**: Advanced document analysis and classification
+- **Confidence Scoring**: AI provides confidence levels for decisions
+- **Content Analysis**: Intelligent subject detection based on file content
+- **Smart Keywords**: Enhanced keyword-based classification system
+
+#### 🛠️ Technical Enhancements
+- **Enhanced API Endpoints**: New endpoints for AI features and subject management
+- **Improved Logging**: Comprehensive activity tracking and debugging
+- **Better Error Handling**: Robust error management throughout the application
+- **Performance Optimizations**: Faster loading and better resource management
+
+### Version 1.0.0 - Initial Release
 - Full Google Classroom and Drive integration
 - Web interface for course selection and progress monitoring
 - Automatic file organization and HTML index generation
 - Material reassignment and search functionality
+- SQLite database for material indexing
+- Basic authentication and download management

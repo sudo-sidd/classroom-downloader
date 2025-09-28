@@ -15,6 +15,12 @@ class ClassroomDownloader {
         this.isSubjectView = true;
         this.llmAvailable = false;
         
+        // Progress tracking variables
+        this.lastLoggedFile = null;
+        this.lastLoggedMessage = null;
+        this.completionLogged = false;
+        this.loggedErrors = new Set();
+        
         this.init();
     }
     
@@ -24,11 +30,18 @@ class ClassroomDownloader {
         await this.loadSettings();
         this.updateUI();
         
-        // Load subject organization data
+        // Load courses and subject organization data on page load
         if (this.isAuthenticated) {
+            console.log('User authenticated, loading data...');
+            await this.loadCourses();
             await this.loadSubjects();
             await this.loadFilesBySubject();
             await this.checkLLMStatus();
+            
+            // Check if there's an ongoing download and show progress if needed
+            await this.checkOngoingDownload();
+            
+            console.log('Initial data loading complete');
         }
     }
     
@@ -217,6 +230,13 @@ class ClassroomDownloader {
                 if (event.data.status === 'success') {
                     this.isAuthenticated = true;
                     this.showToast('Authentication successful!', 'success');
+                    
+                    // Auto-refresh courses and subject organization after successful login
+                    console.log('Authentication successful, refreshing data...');
+                    await this.loadCourses();
+                    await this.loadSubjects();
+                    await this.loadFilesBySubject();
+                    await this.checkLLMStatus();
                 } else {
                     this.showToast(event.data.message || 'Authentication failed', 'error');
                 }
@@ -459,6 +479,13 @@ class ClassroomDownloader {
         
         try {
             this.downloadInProgress = true;
+            
+            // Reset progress tracking variables for new download
+            this.lastLoggedFile = null;
+            this.lastLoggedMessage = null;
+            this.completionLogged = false;
+            this.loggedErrors.clear();
+            
             this.updateUI();
             
             // Get all courses
@@ -486,6 +513,21 @@ class ClassroomDownloader {
             if (response.ok && result.success) {
                 this.showToast('Download started!', 'success');
                 this.showProgressContainer();
+                
+                // Initialize progress display
+                document.getElementById('progress-message').textContent = 'Initializing download...';
+                document.getElementById('progress-files').textContent = '0 / 0 files';
+                document.getElementById('progress-percentage').textContent = '0%';
+                document.getElementById('progress-fill').style.width = '0%';
+                document.getElementById('current-file-name').textContent = '-';
+                
+                // Clear and initialize logs
+                const logsContainer = document.getElementById('logs-container');
+                if (logsContainer) {
+                    logsContainer.innerHTML = '';
+                    this.addLogEntry('Download started - fetching materials from Google Classroom...', 'info');
+                }
+                
                 this.startProgressUpdates();
             } else {
                 this.downloadInProgress = false;
@@ -502,7 +544,13 @@ class ClassroomDownloader {
     }
     
     showProgressContainer() {
-        document.getElementById('progress-container').style.display = 'block';
+        const container = document.getElementById('progress-container');
+        if (container) {
+            container.style.display = 'block';
+            console.log('Progress container made visible');
+        } else {
+            console.error('Progress container not found');
+        }
     }
     
     startProgressUpdates() {
@@ -513,23 +561,37 @@ class ClassroomDownloader {
     
     async updateProgress() {
         try {
+            console.log('Fetching download progress...');
             const response = await fetch('/api/download/status');
             const status = await response.json();
+            
+            console.log('Download status received:', status);
             
             if (response.ok) {
                 this.renderProgress(status);
                 
                 if (status.is_complete || !status.is_active) {
+                    console.log('Download completed or inactive, stopping updates');
                     this.downloadInProgress = false;
                     this.stopProgressUpdates();
                     
                     if (status.is_complete) {
                         this.showToast('Download completed!', 'success');
+                        this.addLogEntry('Download completed successfully!', 'success');
+                        this.addLogEntry('Generating HTML indexes...', 'info');
                         await this.loadStatistics();
+                        // Refresh subject organization after download
+                        await this.loadSubjects();
+                        await this.loadFilesBySubject();
+                        this.addLogEntry('Data refreshed - download process finished', 'success');
+                    } else {
+                        this.addLogEntry('Download stopped', 'info');
                     }
                     
                     this.updateUI();
                 }
+            } else {
+                console.error('Failed to fetch download status:', status);
             }
             
         } catch (error) {
@@ -538,6 +600,8 @@ class ClassroomDownloader {
     }
     
     renderProgress(status) {
+        console.log('Rendering progress:', status);
+        
         // Update message
         const message = status.current_file ? 
             `Processing: ${status.current_file}` : 
@@ -561,6 +625,29 @@ class ClassroomDownloader {
         document.getElementById('current-file-name').textContent = 
             status.current_file || '-';
         
+        // Add progress-based log entries
+        if (status.current_file && status.current_file !== this.lastLoggedFile) {
+            this.addLogEntry(`Processing: ${status.current_file}`, 'info');
+            this.lastLoggedFile = status.current_file;
+        }
+        
+        if (status.message && status.message !== this.lastLoggedMessage) {
+            this.addLogEntry(status.message, 'info');
+            this.lastLoggedMessage = status.message;
+        }
+        
+        // Show download completion logs
+        if (status.final_successful > 0 && !this.completionLogged) {
+            this.addLogEntry(`✓ Successfully downloaded ${status.final_successful} files`, 'success');
+            if (status.final_failed > 0) {
+                this.addLogEntry(`✗ Failed to download ${status.final_failed} files`, 'error');
+            }
+            if (status.duplicates_skipped > 0) {
+                this.addLogEntry(`⚠ Skipped ${status.duplicates_skipped} duplicate files`, 'info');
+            }
+            this.completionLogged = true;
+        }
+        
         // Show errors if any
         const errors = status.errors || [];
         const errorsContainer = document.getElementById('download-errors');
@@ -571,8 +658,67 @@ class ClassroomDownloader {
             errorsList.innerHTML = errors.map(error => 
                 `<li>${this.escapeHtml(error)}</li>`
             ).join('');
+            
+            // Add errors to logs too
+            errors.forEach(error => {
+                if (!this.loggedErrors.has(error)) {
+                    this.addLogEntry(`Error: ${error}`, 'error');
+                    this.loggedErrors.add(error);
+                }
+            });
         } else {
             errorsContainer.style.display = 'none';
+        }
+        
+        // Ensure progress container is visible during download
+        if (this.downloadInProgress) {
+            this.showProgressContainer();
+        }
+        
+        // Update download logs if available
+        if (status.logs) {
+            this.updateDownloadLogs(status.logs);
+        }
+    }
+    
+    updateDownloadLogs(logs) {
+        const logsContainer = document.getElementById('logs-container');
+        if (!logsContainer || !logs) return;
+        
+        // Clear existing logs if this is a new session
+        if (logs.length < logsContainer.children.length) {
+            logsContainer.innerHTML = '';
+        }
+        
+        // Add new logs
+        logs.forEach((log, index) => {
+            if (index >= logsContainer.children.length) {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${log.level || 'info'}`;
+                logEntry.textContent = `${log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''} ${log.message}`;
+                logsContainer.appendChild(logEntry);
+            }
+        });
+        
+        // Auto-scroll to bottom
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+    
+    addLogEntry(message, level = 'info') {
+        const logsContainer = document.getElementById('logs-container');
+        if (!logsContainer) return;
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry ${level}`;
+        logEntry.textContent = `${new Date().toLocaleTimeString()} ${message}`;
+        logsContainer.appendChild(logEntry);
+        
+        // Auto-scroll to bottom
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+        
+        // Limit to last 50 entries
+        while (logsContainer.children.length > 50) {
+            logsContainer.removeChild(logsContainer.firstChild);
         }
     }
     
@@ -581,8 +727,35 @@ class ClassroomDownloader {
             clearInterval(this.progressUpdateInterval);
             this.progressUpdateInterval = null;
         }
+        
+        // Hide progress container after a short delay to show completion
+        setTimeout(() => {
+            const container = document.getElementById('progress-container');
+            if (container && !this.downloadInProgress) {
+                container.style.display = 'none';
+                console.log('Progress container hidden after completion');
+            }
+        }, 3000); // 3 second delay to show completion message
     }
     
+    async checkOngoingDownload() {
+        try {
+            const response = await fetch('/api/download/status');
+            const status = await response.json();
+            
+            if (response.ok && status.is_active) {
+                console.log('Ongoing download detected, showing progress...');
+                this.downloadInProgress = true;
+                this.showProgressContainer();
+                this.renderProgress(status);
+                this.startProgressUpdates();
+                this.updateUI();
+            }
+        } catch (error) {
+            console.log('No ongoing download or error checking status:', error);
+        }
+    }
+
     async loadStatistics() {
         try {
             const response = await fetch('/api/statistics');
@@ -864,29 +1037,41 @@ class ClassroomDownloader {
     
     async loadFilesBySubject() {
         try {
+            console.log('Loading files by subject...');
             const response = await fetch('/api/files/by-subject');
             const result = await response.json();
             
             if (response.ok) {
                 this.filesBySubject = result.files_by_subject || {};
                 this.subjects = result.subjects || this.subjects;
+                console.log('Files by subject loaded:', this.filesBySubject);
+                console.log('Subjects loaded:', this.subjects);
                 this.renderSubjectBins();
             } else {
                 console.error('Error loading files by subject:', result.error);
+                // Still render subject bins even if no files, to show empty bins
+                this.renderSubjectBins();
             }
         } catch (error) {
             console.error('Error loading files by subject:', error);
+            // Still render subject bins even on error, to show empty bins
+            this.renderSubjectBins();
         }
     }
     
     renderSubjectBins() {
+        console.log('Rendering subject bins...');
         const container = document.getElementById('subject-bins-container');
-        if (!container) return;
+        if (!container) {
+            console.error('Subject bins container not found');
+            return;
+        }
         
         const binElements = [];
         
         // Unclassified bin
         const unclassifiedFiles = this.filesBySubject.unclassified || [];
+        console.log('Unclassified files:', unclassifiedFiles.length);
         binElements.push(this.createSubjectBin({
             id: 'unclassified',
             name: 'Unclassified Files',
@@ -896,9 +1081,11 @@ class ClassroomDownloader {
         }));
         
         // Subject bins
+        console.log('Creating bins for', this.subjects.length, 'subjects');
         this.subjects.forEach(subject => {
             const subjectKey = `subject_${subject.id}`;
             const files = this.filesBySubject[subjectKey] || [];
+            console.log(`Subject ${subject.name}: ${files.length} files`);
             binElements.push(this.createSubjectBin({
                 id: subject.id,
                 name: subject.name,
@@ -910,6 +1097,7 @@ class ClassroomDownloader {
         });
         
         container.innerHTML = binElements.join('');
+        console.log('Subject bins rendered successfully');
         
         // Bind drag and drop events
         this.bindDragDropEvents();
@@ -1267,13 +1455,22 @@ class ClassroomDownloader {
         
         if (statusEl) {
             statusEl.className = 'llm-status ' + (status.available ? 'available' : 'unavailable');
-            statusEl.querySelector('span').textContent = status.available ? 'AI Ready' : 'AI Unavailable';
+            
+            if (status.available) {
+                statusEl.querySelector('span').textContent = 'AI Ready';
+            } else if (status.has_api_key === false) {
+                statusEl.querySelector('span').textContent = 'AI Unavailable - No API Key';
+            } else {
+                statusEl.querySelector('span').textContent = 'AI Unavailable';
+            }
         }
         
         if (llmBtn) {
             llmBtn.disabled = !status.available;
-            if (!status.available) {
-                llmBtn.title = 'AI classification requires GEMINI_API_KEY';
+            if (!status.available && !status.has_api_key) {
+                llmBtn.title = 'AI classification is not available. Please check your GEMINI_API_KEY configuration.';
+            } else {
+                llmBtn.title = '';
             }
         }
     }
