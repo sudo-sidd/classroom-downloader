@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyHub - Complete Learning Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>StudyHub</h1>
+            </div>
+            <nav class="nav">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#about" class="nav-link">About</a>
+            </nav>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Your Complete Learning Platform</h2>
+                <p>Download materials from Google Classroom and study with powerful AI-assisted tools</p>
+                <div class="hero-buttons">
+                    <a href="/downloader" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Material Downloader
+                    </a>
+                    <a href="/study" class="btn btn-secondary">
+                        <i class="fas fa-book-open"></i>
+                        Study Tool
+                    </a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <i class="fas fa-laptop-code"></i>
+            </div>
+        </section>
+
+        <!-- Features Grid -->
+        <section id="features" class="features">
+            <h3>Powerful Features</h3>
+            <div class="features-grid">
+                <!-- Downloader Features -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cloud-download-alt"></i>
+                    </div>
+                    <h4>Smart Downloader</h4>
+                    <p>Automatically download and organize materials from Google Classroom with AI-powered categorization</p>
+                    <ul>
+                        <li>Parallel downloads</li>
+                        <li>File deduplication</li>
+                        <li>Smart organization</li>
+                        <li>Real-time progress</li>
+                    </ul>
+                </div>
+
+                <!-- Document Viewers -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h4>Document Viewers</h4>
+                    <p>Read and view all types of documents with built-in viewers and annotation tools</p>
+                    <ul>
+                        <li>PDF viewer with zoom</li>
+                        <li>EPUB e-book reader</li>
+                        <li>Office document support</li>
+                        <li>Media players</li>
+                    </ul>
+                </div>
+
+                <!-- AI Study Assistant -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h4>AI Study Assistant</h4>
+                    <p>Get help with your studies using Gemini AI that understands your document content</p>
+                    <ul>
+                        <li>Document Q&A</li>
+                        <li>Content summarization</li>
+                        <li>Explanation help</li>
+                        <li>Study recommendations</li>
+                    </ul>
+                </div>
+
+                <!-- Notes & Annotations -->
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sticky-note"></i>
+                    </div>
+                    <h4>Notes & Annotations</h4>
+                    <p>Take comprehensive notes with highlighting, sticky notes, and voice annotations</p>
+                    <ul>
+                        <li>Text highlighting</li>
+                        <li>Sticky note annotations</li>
+                        <li>Voice notes</li>
+                        <li>Searchable notes</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Stats -->
+        <section class="stats">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="files-count">0</div>
+                    <div class="stat-label">Files Downloaded</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="courses-count">0</div>
+                    <div class="stat-label">Courses</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="notes-count">0</div>
+                    <div class="stat-label">Notes Created</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="study-time">0h</div>
+                    <div class="stat-label">Study Time</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Activity -->
+        <section class="recent-activity">
+            <h3>Recent Activity</h3>
+            <div class="activity-list" id="recent-activity">
+                <div class="activity-item">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Welcome to StudyHub! Start by downloading materials or exploring the study tool.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 StudyHub - Your Complete Learning Platform</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+</body>
+</html>

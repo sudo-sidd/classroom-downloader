@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyHub - Study Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/study.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- PDF.js for PDF viewing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Try a different EPUB library - Readium Web Components -->
+    <script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2.7.34/dist/zip.min.js"></script>
+</head>
+<body>
+    <div id="study-app" class="study-app">
+        <!-- Header -->
+        <header class="study-header">
+            <div class="header-left">
+                <a href="/" class="back-home">
+                    <i class="fas fa-home"></i>
+                    StudyHub
+                </a>
+            </div>
+            <div class="header-center">
+                <h1 id="current-document-title">Select a document to start studying</h1>
+            </div>
+            <div class="header-right">
+                <button id="toggle-notes-btn" class="tool-btn" title="Toggle Notes Panel">
+                    <i class="fas fa-sticky-note"></i>
+                </button>
+                <button id="toggle-chat-btn" class="tool-btn" title="Toggle AI Assistant">
+                    <i class="fas fa-robot"></i>
+                </button>
+                <button id="fullscreen-btn" class="tool-btn" title="Toggle Fullscreen">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="study-container">
+            <!-- File Browser Sidebar -->
+            <aside id="file-browser" class="file-browser">
+                <div class="browser-header">
+                    <h3><i class="fas fa-folder-open"></i> Your Materials</h3>
+                    <div class="browser-controls">
+                        <button id="refresh-files-btn" class="icon-btn" title="Refresh Files">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <input type="text" id="file-search" placeholder="Search files..." class="search-input">
+                    </div>
+                </div>
+                
+                <div class="browser-content">
+                    <!-- Course/Subject Filters -->
+                    <div class="filter-section">
+                        <h4>Filter by Course</h4>
+                        <select id="course-filter" class="filter-select">
+                            <option value="">All Courses</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h4>Filter by Type</h4>
+                        <div class="type-filters">
+                            <button class="type-filter active" data-type="">All</button>
+                            <button class="type-filter" data-type="pdf">PDF</button>
+                            <button class="type-filter" data-type="epub">EPUB</button>
+                            <button class="type-filter" data-type="image">Images</button>
+                            <button class="type-filter" data-type="video">Videos</button>
+                            <button class="type-filter" data-type="document">Docs</button>
+                        </div>
+                    </div>
+                    
+                    <!-- File List -->
+                    <div class="file-list" id="file-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Loading files...
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <div id="viewer-container" class="viewer-container">
+                    <!-- Welcome Screen -->
+                    <div id="welcome-screen" class="welcome-screen">
+                        <div class="welcome-content">
+                            <i class="fas fa-book-reader"></i>
+                            <h2>Welcome to StudyHub</h2>
+                            <p>Select a document from the sidebar to start studying with AI-powered tools</p>
+                            <div class="feature-highlights">
+                                <div class="feature">
+                                    <i class="fas fa-highlighter"></i>
+                                    <span>Highlight & Annotate</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-sticky-note"></i>
+                                    <span>Take Notes</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-robot"></i>
+                                    <span>AI Assistant</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fas fa-bookmark"></i>
+                                    <span>Bookmarks</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Document Viewers -->
+                    <div id="pdf-viewer" class="document-viewer" style="display: none;">
+                        <div class="viewer-toolbar">
+                            <div class="toolbar-group">
+                                <button id="pdf-prev-page" class="tool-btn">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span id="pdf-page-info">Page 1 of 1</span>
+                                <button id="pdf-next-page" class="tool-btn">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="toolbar-group">
+                                <button id="pdf-zoom-out" class="tool-btn">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <span id="pdf-zoom-level">100%</span>
+                                <button id="pdf-zoom-in" class="tool-btn">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button id="pdf-fit-width" class="tool-btn">
+                                    <i class="fas fa-arrows-alt-h"></i>
+                                </button>
+                            </div>
+                            <div class="toolbar-group">
+                                <button id="pdf-download" class="tool-btn">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="pdf-canvas-container" class="canvas-container">
+                            <canvas id="pdf-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="epub-viewer" class="document-viewer" style="display: none;">
+                        <div class="viewer-toolbar">
+                            <div class="toolbar-group">
+                                <button id="epub-prev" class="tool-btn">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span id="epub-progress">0%</span>
+                                <button id="epub-next" class="tool-btn">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="toolbar-group">
+                                <button id="epub-toc" class="tool-btn">
+                                    <i class="fas fa-list"></i>
+                                    Contents
+                                </button>
+                                <button id="epub-font-size-down" class="tool-btn">
+                                    <i class="fas fa-font"></i>-
+                                </button>
+                                <button id="epub-font-size-up" class="tool-btn">
+                                    <i class="fas fa-font"></i>+
+                                </button>
+                            </div>
+                        </div>
+                        <div id="epub-container" class="epub-container"></div>
+                    </div>
+
+                    <div id="image-viewer" class="document-viewer" style="display: none;">
+                        <div class="viewer-toolbar">
+                            <div class="toolbar-group">
+                                <button id="image-zoom-out" class="tool-btn">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <span id="image-zoom-level">100%</span>
+                                <button id="image-zoom-in" class="tool-btn">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button id="image-fit" class="tool-btn">
+                                    <i class="fas fa-compress-arrows-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="image-container" class="image-container">
+                            <img id="image-content" alt="Document image">
+                        </div>
+                    </div>
+
+                    <div id="video-viewer" class="document-viewer" style="display: none;">
+                        <video id="video-player" controls>
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+
+                    <div id="text-viewer" class="document-viewer" style="display: none;">
+                        <div class="viewer-toolbar">
+                            <div class="toolbar-group">
+                                <button id="text-wrap-toggle" class="tool-btn">
+                                    <i class="fas fa-align-justify"></i>
+                                    Wrap
+                                </button>
+                                <button id="text-font-size-down" class="tool-btn">
+                                    <i class="fas fa-font"></i>-
+                                </button>
+                                <button id="text-font-size-up" class="tool-btn">
+                                    <i class="fas fa-font"></i>+
+                                </button>
+                            </div>
+                        </div>
+                        <div id="text-container" class="text-container">
+                            <pre id="text-content"></pre>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Notes Panel -->
+            <aside id="notes-panel" class="notes-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-sticky-note"></i> Notes & Annotations</h3>
+                    <button id="close-notes-btn" class="close-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="panel-content">
+                    <div class="notes-toolbar">
+                        <button id="add-text-note-btn" class="note-tool-btn active" data-tool="text">
+                            <i class="fas fa-font"></i>
+                            Text Note
+                        </button>
+                        <button id="add-voice-note-btn" class="note-tool-btn" data-tool="voice">
+                            <i class="fas fa-microphone"></i>
+                            Voice Note
+                        </button>
+                        <button id="highlight-tool-btn" class="note-tool-btn" data-tool="highlight">
+                            <i class="fas fa-highlighter"></i>
+                            Highlight
+                        </button>
+                    </div>
+                    
+                    <div id="notes-list" class="notes-list">
+                        <div class="no-notes">
+                            <i class="fas fa-sticky-note"></i>
+                            <p>No notes yet. Start taking notes to see them here.</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- AI Chat Panel -->
+            <aside id="chat-panel" class="chat-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-robot"></i> AI Study Assistant</h3>
+                    <button id="close-chat-btn" class="close-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="panel-content">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="chat-message assistant">
+                            <div class="message-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <p>Hello! I'm your AI study assistant. I can help you understand documents, answer questions about your materials, create flashcards, and provide study guidance. What would you like to know?</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Ask me anything about your studies..." class="chat-input">
+                        <button id="send-chat-btn" class="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Context Menus -->
+    <div id="text-context-menu" class="context-menu" style="display: none;">
+        <div class="context-item" data-action="highlight">
+            <i class="fas fa-highlighter"></i>
+            Highlight
+        </div>
+        <div class="context-item" data-action="note">
+            <i class="fas fa-sticky-note"></i>
+            Add Note
+        </div>
+        <div class="context-item" data-action="ask-ai">
+            <i class="fas fa-robot"></i>
+            Ask AI About This
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading document...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/study.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pdf-viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/epub-reader-new.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/notes-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat-assistant.js') }}"></script>
+</body>
+</html>

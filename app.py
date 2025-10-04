@@ -90,8 +90,8 @@ def initialize_managers():
 
 @app.route('/')
 def index():
-    """Serve the main application page."""
-    return render_template('index.html')
+    """Serve the new home page."""
+    return render_template('home.html')
 
 # --- Popup-based OAuth endpoints ---
 @app.route('/oauth2/start')
@@ -277,6 +277,12 @@ def api_logout():
 def api_get_courses():
     """Get all available courses."""
     try:
+        # First try to get from database
+        courses = db_manager.get_all_courses()
+        if courses:
+            return jsonify(courses)
+        
+        # If no courses in db, try to fetch from API
         if not classroom_client:
             return jsonify({'error': 'Classroom client not initialized'}), 500
         
@@ -289,14 +295,12 @@ def api_get_courses():
         for course in courses:
             db_manager.add_course(course)
         
-        return jsonify({
-            'courses': courses,
-            'total': len(courses)
-        })
+        return jsonify(courses)
         
     except Exception as e:
         logger.error(f"Error getting courses: {e}")
-        return jsonify({'error': str(e)}), 500
+        # Return empty list for study tool compatibility
+        return jsonify([])
 
 
 @app.route('/api/settings', methods=['GET', 'POST'])
@@ -513,6 +517,76 @@ def api_get_materials():
         
     except Exception as e:
         logger.error(f"Error getting materials: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/reindex', methods=['POST'])
+def api_reindex_materials():
+    """Re-index existing downloaded materials into the database."""
+    try:
+        if not file_manager:
+            return jsonify({'error': 'File manager not initialized'}), 500
+        
+        reindexed_count = 0
+        course_count = 0
+        
+        # Scan downloads directory
+        downloads_dir = file_manager.base_dir
+        
+        for course_dir in downloads_dir.iterdir():
+            if course_dir.is_dir():
+                course_name = course_dir.name
+                course_id = f"local_{course_name.replace(' ', '_').replace('-', '_')}"
+                
+                # Add course to database
+                db_manager.add_course({
+                    'id': course_id,
+                    'name': course_name,
+                    'description': f'Local course: {course_name}',
+                    'section': '',
+                    'enrollmentCode': '',
+                    'courseState': 'ACTIVE'
+                })
+                course_count += 1
+                
+                # Scan for files recursively
+                for file_path in course_dir.rglob('*'):
+                    if file_path.is_file() and file_path.name not in ['index.html']:
+                        try:
+                            # Determine MIME type
+                            import mimetypes
+                            mime_type, _ = mimetypes.guess_type(str(file_path))
+                            if not mime_type:
+                                mime_type = 'application/octet-stream'
+                            
+                            # Create material entry
+                            material = {
+                                'course_id': course_id,
+                                'course_name': course_name,
+                                'title': file_path.name,
+                                'mime_type': mime_type,
+                                'local_path': str(file_path),
+                                'size': file_path.stat().st_size,
+                                'download_date': datetime.now().isoformat()
+                            }
+                            
+                            # Add to database
+                            db_manager.add_material(material)
+                            reindexed_count += 1
+                            
+                        except Exception as e:
+                            logger.warning(f"Error indexing file {file_path}: {e}")
+                            continue
+        
+        return jsonify({
+            'success': True,
+            'message': f'Re-indexed {reindexed_count} materials from {course_count} courses',
+            'materials_count': reindexed_count,
+            'courses_count': course_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error re-indexing materials: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -999,6 +1073,268 @@ def api_llm_status():
         
     except Exception as e:
         logger.error(f"Error getting LLM status: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Study Tool Routes
+
+@app.route('/study')
+def study_tool():
+    """Render the study tool interface."""
+    return render_template('study.html')
+
+@app.route('/downloader')
+def downloader_tool():
+    """Render the original downloader interface."""
+    return render_template('downloader.html')
+
+# Study API Endpoints
+
+@app.route('/api/file/<int:material_id>')
+def api_get_file(material_id):
+    """Serve a specific file by material ID."""
+    try:
+        if not db_manager:
+            return jsonify({'error': 'Database manager not initialized'}), 500
+        
+        # Get material from database
+        materials = db_manager.get_all_materials()
+        material = next((m for m in materials if m['id'] == material_id), None)
+        
+        if not material:
+            return jsonify({'error': 'Material not found'}), 404
+        
+        if not material.get('local_path'):
+            return jsonify({'error': 'File path not available'}), 404
+        
+        # Security check
+        file_path = Path(material['local_path'])
+        if not file_path.exists():
+            return jsonify({'error': 'File not found on disk'}), 404
+        
+        # Ensure file is within base directory
+        if not str(file_path.resolve()).startswith(str(file_manager.base_dir.resolve())):
+            return jsonify({'error': 'Access denied'}), 403
+        
+        # Determine MIME type
+        import mimetypes
+        mime_type = material.get('mime_type')
+        if not mime_type:
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if not mime_type:
+                mime_type = 'application/octet-stream'
+        
+        # Create response with proper headers
+        response = send_from_directory(
+            str(file_path.parent),
+            file_path.name,
+            as_attachment=False,
+            mimetype=mime_type
+        )
+        
+        # Add CORS headers for browser compatibility
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        
+        # Add cache control for better performance
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        
+        # Add specific headers for EPUB files to help with CORS
+        if mime_type == 'application/epub+zip':
+            response.headers['Access-Control-Allow-Headers'] += ', Range'
+            response.headers['Accept-Ranges'] = 'bytes'
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error serving file: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/files/<path:filepath>')
+def serve_file(filepath):
+    """Serve files directly from downloads directory."""
+    try:
+        # Security check - ensure file is within downloads directory
+        downloads_dir = file_manager.base_dir
+        full_path = downloads_dir / filepath
+        
+        if not str(full_path.resolve()).startswith(str(downloads_dir.resolve())):
+            return jsonify({'error': 'Access denied'}), 403
+            
+        if not full_path.exists():
+            return jsonify({'error': 'File not found'}), 404
+        
+        # Determine MIME type
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(str(full_path))
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+        
+        response = send_from_directory(
+            str(full_path.parent),
+            full_path.name,
+            as_attachment=False,
+            mimetype=mime_type
+        )
+        
+        # Add headers for better browser compatibility
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        
+        # Add specific headers for EPUB files
+        if mime_type == 'application/epub+zip':
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Range'
+            response.headers['Accept-Ranges'] = 'bytes'
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error serving file {filepath}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/notes/<int:material_id>')
+def api_get_notes_for_material(material_id):
+    """Get all notes for a specific material."""
+    try:
+        notes = db_manager.get_notes_for_material(material_id)
+        return jsonify(notes)
+    except Exception as e:
+        logger.error(f"Error getting notes: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notes', methods=['POST'])
+def api_create_note():
+    """Create a new note."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        success = db_manager.add_note(data)
+        if success:
+            return jsonify({'success': True, 'message': 'Note saved successfully'}), 201
+        else:
+            return jsonify({'error': 'Failed to save note'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating note: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/study-session/<int:material_id>')
+def api_get_study_session(material_id):
+    """Get study session for a specific material."""
+    try:
+        session = db_manager.get_study_session(material_id)
+        return jsonify(session) if session else jsonify({})
+    except Exception as e:
+        logger.error(f"Error getting study session: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/study-session', methods=['POST'])
+def api_update_study_session():
+    """Update study session."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        success = db_manager.update_study_session(data)
+        if success:
+            return jsonify({'success': True, 'message': 'Study session updated'})
+        else:
+            return jsonify({'error': 'Failed to update study session'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error updating study session: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    """Handle AI chat messages."""
+    try:
+        if not llm_analyzer:
+            return jsonify({'error': 'LLM analyzer not initialized'}), 500
+        
+        if not llm_analyzer.is_available():
+            return jsonify({'error': 'AI chat not available. Please check GEMINI_API_KEY.'}), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        user_message = data.get('message', '').strip()
+        context = data.get('context', {})
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        # Prepare context for AI
+        ai_context = []
+        
+        if context.get('has_document') and context.get('current_content'):
+            ai_context.append(f"The user is currently studying a {context.get('document_type', 'document')} titled '{context.get('material_info', {}).get('title', 'Unknown')}' from course '{context.get('material_info', {}).get('course', 'Unknown')}'.")
+            ai_context.append(f"Current content visible to user: {context.get('current_content')[:1000]}...")
+        
+        if context.get('user_notes'):
+            recent_notes = context['user_notes'][:3]  # Last 3 notes for context
+            notes_text = '; '.join([note['content'][:100] for note in recent_notes if note.get('content')])
+            if notes_text:
+                ai_context.append(f"User's recent notes: {notes_text}")
+        
+        # Create system prompt
+        system_prompt = """You are an AI study assistant helping students with their educational materials. You can:
+        - Answer questions about document content
+        - Explain complex concepts
+        - Create summaries and study guides
+        - Generate flashcard questions
+        - Provide study recommendations
+        
+        Be helpful, concise, and educational. Use formatting like **bold** for emphasis and bullet points for lists."""
+        
+        if ai_context:
+            system_prompt += f"\n\nContext: {' '.join(ai_context)}"
+        
+        # Use asyncio to call the async method
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            response = loop.run_until_complete(
+                llm_analyzer._call_gemini_api(user_message, system_prompt)
+            )
+        finally:
+            loop.close()
+        
+        return jsonify({'response': response})
+        
+    except Exception as e:
+        logger.error(f"Error processing chat message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats')
+def api_get_study_stats():
+    """Get study statistics for the home page."""
+    try:
+        # Get basic stats
+        materials = db_manager.get_all_materials()
+        courses = db_manager.get_all_courses()
+        
+        # Get study stats
+        study_stats = db_manager.get_study_stats()
+        
+        return jsonify({
+            'files_count': len(materials),
+            'courses_count': len(courses),
+            'notes_count': study_stats.get('total_notes', 0),
+            'study_time': study_stats.get('total_study_time', 0)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 

@@ -99,6 +99,76 @@ class DatabaseManager:
                     )
                 """)
 
+                # Study-related tables
+                
+                # Notes table - for all types of annotations and notes
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS notes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        material_id INTEGER NOT NULL,
+                        note_type TEXT NOT NULL CHECK(note_type IN ('highlight', 'sticky_note', 'voice_note', 'text_note')),
+                        content TEXT,
+                        audio_path TEXT,
+                        position_data TEXT, -- JSON string for position/coordinates
+                        page_number INTEGER,
+                        tags TEXT, -- JSON array of tags
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (material_id) REFERENCES materials (id) ON DELETE CASCADE
+                    )
+                """)
+                
+                # Study sessions table - track reading progress and bookmarks
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS study_sessions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        material_id INTEGER NOT NULL,
+                        session_start TEXT,
+                        session_end TEXT,
+                        current_page INTEGER DEFAULT 1,
+                        total_pages INTEGER,
+                        progress_percentage REAL DEFAULT 0.0,
+                        bookmarks TEXT, -- JSON array of bookmarked pages/positions
+                        reading_time INTEGER DEFAULT 0, -- in seconds
+                        last_position TEXT, -- JSON string for last reading position
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (material_id) REFERENCES materials (id) ON DELETE CASCADE
+                    )
+                """)
+                
+                # Flashcards table - user-created flashcards from content
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS flashcards (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        material_id INTEGER NOT NULL,
+                        question TEXT NOT NULL,
+                        answer TEXT NOT NULL,
+                        category TEXT,
+                        difficulty_level INTEGER DEFAULT 1, -- 1-5 scale
+                        times_reviewed INTEGER DEFAULT 0,
+                        times_correct INTEGER DEFAULT 0,
+                        last_reviewed TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (material_id) REFERENCES materials (id) ON DELETE CASCADE
+                    )
+                """)
+                
+                # Chat history table - AI conversation history
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS chat_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        material_id INTEGER, -- NULL for general conversations
+                        session_id TEXT NOT NULL,
+                        message_type TEXT NOT NULL CHECK(message_type IN ('user', 'assistant')),
+                        content TEXT NOT NULL,
+                        context_data TEXT, -- JSON string for additional context
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (material_id) REFERENCES materials (id) ON DELETE SET NULL
+                    )
+                """)
+
                 # Create indexes for better performance
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_materials_course_id ON materials(course_id)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_materials_mime_type ON materials(mime_type)")
@@ -107,6 +177,14 @@ class DatabaseManager:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_materials_hash ON materials(file_hash)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_classifications_material ON file_classifications(material_id)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_classifications_subject ON file_classifications(subject_id)")
+                
+                # Study-related indexes
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_material ON notes(material_id)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_type ON notes(note_type)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_material ON study_sessions(material_id)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_flashcards_material ON flashcards(material_id)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_history(session_id)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_material ON chat_history(material_id)")
                 
                 conn.commit()
                 logging.info("Database initialized successfully")
@@ -200,6 +278,18 @@ class DatabaseManager:
                 return [dict(row) for row in cursor.fetchall()]
         except sqlite3.Error as e:
             logging.error(f"Error getting courses: {e}")
+            return []
+
+    def get_all_materials(self) -> List[Dict[str, Any]]:
+        """Get all materials from the database."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM materials ORDER BY title")
+                return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            logging.error(f"Error getting materials: {e}")
             return []
     
     def check_duplicate_by_hash(self, file_hash: str) -> Optional[Dict[str, Any]]:
@@ -539,3 +629,222 @@ class DatabaseManager:
     def get_connection(self):
         """Get a database connection context manager."""
         return sqlite3.connect(self.db_path)
+
+    # Study-related methods
+    
+    def add_note(self, note_data: Dict[str, Any]) -> bool:
+        """Add a note/annotation to the database."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO notes 
+                    (material_id, note_type, content, audio_path, position_data, page_number, tags)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    note_data.get('material_id'),
+                    note_data.get('note_type'),
+                    note_data.get('content'),
+                    note_data.get('audio_path'),
+                    note_data.get('position_data'),
+                    note_data.get('page_number'),
+                    note_data.get('tags')
+                ))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logging.error(f"Error adding note: {e}")
+            return False
+    
+    def get_notes_for_material(self, material_id: int) -> List[Dict[str, Any]]:
+        """Get all notes for a specific material."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT * FROM notes 
+                    WHERE material_id = ? 
+                    ORDER BY created_at DESC
+                """, (material_id,))
+                return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            logging.error(f"Error getting notes for material {material_id}: {e}")
+            return []
+    
+    def update_study_session(self, session_data: Dict[str, Any]) -> bool:
+        """Update or create a study session."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO study_sessions 
+                    (material_id, session_start, session_end, current_page, total_pages, 
+                     progress_percentage, bookmarks, reading_time, last_position)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    session_data.get('material_id'),
+                    session_data.get('session_start'),
+                    session_data.get('session_end'),
+                    session_data.get('current_page'),
+                    session_data.get('total_pages'),
+                    session_data.get('progress_percentage'),
+                    session_data.get('bookmarks'),
+                    session_data.get('reading_time'),
+                    session_data.get('last_position')
+                ))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logging.error(f"Error updating study session: {e}")
+            return False
+    
+    def get_study_session(self, material_id: int) -> Optional[Dict[str, Any]]:
+        """Get the latest study session for a material."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT * FROM study_sessions 
+                    WHERE material_id = ? 
+                    ORDER BY updated_at DESC 
+                    LIMIT 1
+                """, (material_id,))
+                row = cursor.fetchone()
+                return dict(row) if row else None
+        except sqlite3.Error as e:
+            logging.error(f"Error getting study session for material {material_id}: {e}")
+            return None
+    
+    def add_flashcard(self, flashcard_data: Dict[str, Any]) -> bool:
+        """Add a flashcard to the database."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO flashcards 
+                    (material_id, question, answer, category, difficulty_level)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    flashcard_data.get('material_id'),
+                    flashcard_data.get('question'),
+                    flashcard_data.get('answer'),
+                    flashcard_data.get('category'),
+                    flashcard_data.get('difficulty_level', 1)
+                ))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logging.error(f"Error adding flashcard: {e}")
+            return False
+    
+    def get_flashcards_for_material(self, material_id: int) -> List[Dict[str, Any]]:
+        """Get all flashcards for a specific material."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT * FROM flashcards 
+                    WHERE material_id = ? 
+                    ORDER BY created_at DESC
+                """, (material_id,))
+                return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            logging.error(f"Error getting flashcards for material {material_id}: {e}")
+            return []
+    
+    def add_chat_message(self, message_data: Dict[str, Any]) -> bool:
+        """Add a chat message to the database."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO chat_history 
+                    (material_id, session_id, message_type, content, context_data)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    message_data.get('material_id'),
+                    message_data.get('session_id'),
+                    message_data.get('message_type'),
+                    message_data.get('content'),
+                    message_data.get('context_data')
+                ))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logging.error(f"Error adding chat message: {e}")
+            return False
+    
+    def get_chat_history(self, session_id: str, material_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get chat history for a session, optionally filtered by material."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                if material_id:
+                    cursor.execute("""
+                        SELECT * FROM chat_history 
+                        WHERE session_id = ? AND material_id = ?
+                        ORDER BY created_at ASC
+                    """, (session_id, material_id))
+                else:
+                    cursor.execute("""
+                        SELECT * FROM chat_history 
+                        WHERE session_id = ?
+                        ORDER BY created_at ASC
+                    """, (session_id,))
+                
+                return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            logging.error(f"Error getting chat history: {e}")
+            return []
+    
+    def get_study_stats(self) -> Dict[str, Any]:
+        """Get comprehensive study statistics."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Total notes count
+                cursor.execute("SELECT COUNT(*) FROM notes")
+                total_notes = cursor.fetchone()[0]
+                
+                # Total study time (in hours)
+                cursor.execute("SELECT SUM(reading_time) FROM study_sessions")
+                total_seconds = cursor.fetchone()[0] or 0
+                total_hours = total_seconds / 3600
+                
+                # Total flashcards
+                cursor.execute("SELECT COUNT(*) FROM flashcards")
+                total_flashcards = cursor.fetchone()[0]
+                
+                # Files with study activity
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT material_id) 
+                    FROM (
+                        SELECT material_id FROM notes
+                        UNION 
+                        SELECT material_id FROM study_sessions
+                        UNION
+                        SELECT material_id FROM flashcards
+                    )
+                """)
+                files_studied = cursor.fetchone()[0]
+                
+                return {
+                    "total_notes": total_notes,
+                    "total_study_time": total_hours,
+                    "total_flashcards": total_flashcards,
+                    "files_studied": files_studied
+                }
+        except sqlite3.Error as e:
+            logging.error(f"Error getting study stats: {e}")
+            return {
+                "total_notes": 0,
+                "total_study_time": 0,
+                "total_flashcards": 0,
+                "files_studied": 0
+            }
